@@ -17,13 +17,38 @@ const PLANET_DATA = [
   { name: "Neptune", color: [60, 100, 220],   sizeFactor: 3.88, orbitDist: 550, speed: 0.0015, gravity: 11.15, diameterKm: 49528,  fact: "Neptune's gravity is 1.14x Earth's — slightly heavier!" }
 ];
 
+// === FIREBASE ===
+firebase.initializeApp({
+  projectId: "sam-school-game",
+  appId: "1:1006380922835:web:227341eaa546fad3c5e126",
+  storageBucket: "sam-school-game.firebasestorage.app",
+  apiKey: "AIzaSyBnVYPLcVrs_crEIaPYE4F93knU7gGFCvg",
+  authDomain: "sam-school-game.firebaseapp.com",
+  messagingSenderId: "1006380922835",
+});
+const db = firebase.firestore();
+
 // === GAME STATE ===
-let gameState = "INTRO"; // INTRO, SPACE, LANDING, SURFACE, WIN
+let gameState = "NAME"; // NAME, INTRO, SPACE, LANDING, SURFACE, WIN, LEADERBOARD
 let planets = [];
 let sun;
 let stars = [];
 let currentPIdx = 2; // Start focused on Earth
 let selectedPIdx = -1;
+
+// Player identity
+let playerInitials = "";
+let initialsInput = ["_", "_", "_"];
+let initialsPos = 0;
+
+// Leaderboard
+let leaderboardData = [];
+let leaderboardLoaded = false;
+
+// 5-minute game timer
+let gameTimer = 300; // seconds
+let gameTimerStarted = false;
+let lastTimerFrame = 0;
 
 // Milestone tracking for first-time feedback
 let milestones = {
@@ -168,9 +193,15 @@ function setup() {
 function draw() {
   background(5, 5, 15);
 
-  if (gameState === "INTRO") {
+  if (gameState === "NAME") {
+    drawStars();
+    drawNameScreen();
+  } else if (gameState === "INTRO") {
     drawStars();
     drawIntroScreen();
+  } else if (gameState === "LEADERBOARD") {
+    drawStars();
+    drawLeaderboard();
   } else if (gameState === "SPACE") {
     drawStars();
     drawSpaceView();
@@ -208,9 +239,273 @@ function draw() {
     drawWinScreen();
   }
 
+  // Game timer (ticks during SPACE, LANDING, SURFACE)
+  if (gameTimerStarted && (gameState === "SPACE" || gameState === "LANDING" || gameState === "SURFACE")) {
+    if (frameCount !== lastTimerFrame && frameCount % 60 === 0) {
+      gameTimer--;
+      lastTimerFrame = frameCount;
+      if (gameTimer <= 0) {
+        gameTimer = 0;
+        saveSurface();
+        gameState = "WIN";
+        addMessage("TIME'S UP! Final score recorded.");
+        saveScore();
+      }
+    }
+    drawGameTimer();
+  }
+
   drawMessages();
   drawParticles();
   handleDragRender();
+}
+
+// ===========================
+//       GAME TIMER DISPLAY
+// ===========================
+
+function drawGameTimer() {
+  let m = isMobile();
+  let mins = floor(gameTimer / 60);
+  let secs = gameTimer % 60;
+  let timeStr = mins + ":" + (secs < 10 ? "0" : "") + secs;
+
+  // Position: top-right on desktop, top-center on mobile
+  let tx = m ? width / 2 : width - (gameState === "SURFACE" ? 270 : 15);
+  let ty = m ? 12 : 15;
+
+  // Warning colors when low
+  if (gameTimer <= 30) {
+    fill(255, 50, 50, frameCount % 30 < 15 ? 255 : 150);
+  } else if (gameTimer <= 60) {
+    fill(255, 200, 50);
+  } else {
+    fill(255, 255, 255, 200);
+  }
+
+  textAlign(m ? CENTER : RIGHT, TOP);
+  textSize(m ? 18 : 22);
+  text(timeStr, tx, ty);
+}
+
+// ===========================
+//       NAME ENTRY SCREEN
+// ===========================
+
+function drawNameScreen() {
+  let m = isMobile();
+  let cx = width / 2;
+  let cy = height / 2;
+
+  fill(255);
+  textAlign(CENTER, CENTER);
+  textSize(m ? 28 : 42);
+  text("ASTRA-REFORM", cx, cy * 0.35);
+
+  fill(150, 220, 255);
+  textSize(m ? 16 : 22);
+  text("The Solar Restoration", cx, cy * 0.35 + (m ? 32 : 48));
+
+  // Enter initials prompt
+  fill(255);
+  textSize(m ? 18 : 24);
+  text("ENTER YOUR INITIALS", cx, cy * 0.7);
+
+  // Letter boxes
+  let boxSize = m ? 55 : 70;
+  let gap = m ? 15 : 20;
+  let totalW = boxSize * 3 + gap * 2;
+  let startX = cx - totalW / 2;
+  let boxY = cy * 0.85;
+
+  for (let i = 0; i < 3; i++) {
+    let bx = startX + i * (boxSize + gap);
+    // Highlight current position
+    if (i === initialsPos) {
+      fill(50, 160, 90);
+      stroke(100, 255, 150);
+      strokeWeight(3);
+    } else {
+      fill(30, 30, 50);
+      stroke(100);
+      strokeWeight(2);
+    }
+    rect(bx, boxY, boxSize, boxSize, 10);
+
+    fill(255);
+    noStroke();
+    textSize(m ? 30 : 40);
+    text(initialsInput[i], bx + boxSize / 2, boxY + boxSize / 2);
+  }
+
+  // Mobile keyboard — show letter grid
+  if (m) {
+    let letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    let cols = 7;
+    let keySize = min(38, (width - 40) / cols - 4);
+    let keyGap = 4;
+    let keysW = cols * (keySize + keyGap);
+    let keysStartX = cx - keysW / 2;
+    let keysStartY = boxY + boxSize + 25;
+
+    for (let k = 0; k < letters.length; k++) {
+      let col = k % cols;
+      let row = floor(k / cols);
+      let kx = keysStartX + col * (keySize + keyGap);
+      let ky = keysStartY + row * (keySize + keyGap);
+
+      fill(40, 40, 70);
+      noStroke();
+      rect(kx, ky, keySize, keySize, 6);
+      fill(255);
+      textSize(keySize * 0.5);
+      text(letters[k], kx + keySize / 2, ky + keySize / 2);
+    }
+
+    // Backspace button
+    let bkRows = ceil(letters.length / cols);
+    let bkY = keysStartY + bkRows * (keySize + keyGap) + 8;
+    fill(120, 40, 40);
+    noStroke();
+    rect(cx - 55, bkY, 110, 36, 8);
+    fill(255);
+    textSize(15);
+    text("DELETE", cx, bkY + 18);
+  } else {
+    fill(150);
+    textSize(16);
+    text("Type your 3 initials on the keyboard", cx, boxY + boxSize + 40);
+  }
+
+  // Leaderboard button
+  let lbW = m ? 180 : 200;
+  let lbH = m ? 38 : 40;
+  let lbX = cx - lbW / 2;
+  let lbY = height - (m ? 55 : 70);
+  fill(30, 60, 120);
+  noStroke();
+  rect(lbX, lbY, lbW, lbH, 8);
+  fill(255);
+  textSize(m ? 14 : 16);
+  text("VIEW LEADERBOARD", cx, lbY + lbH / 2);
+}
+
+// ===========================
+//       LEADERBOARD
+// ===========================
+
+function loadLeaderboard() {
+  leaderboardLoaded = false;
+  db.collection("scores")
+    .orderBy("score", "desc")
+    .limit(20)
+    .get()
+    .then(function(snap) {
+      leaderboardData = [];
+      snap.forEach(function(doc) {
+        leaderboardData.push(doc.data());
+      });
+      leaderboardLoaded = true;
+    })
+    .catch(function(err) {
+      console.error("Leaderboard load error:", err);
+      leaderboardLoaded = true; // show empty
+    });
+}
+
+function saveScore() {
+  if (!playerInitials || playerInitials.length < 1) return;
+  db.collection("scores").add({
+    initials: playerInitials,
+    score: score,
+    planets: planetsRestored,
+    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+  }).then(function() {
+    console.log("Score saved!");
+    loadLeaderboard();
+  }).catch(function(err) {
+    console.error("Score save error:", err);
+  });
+}
+
+function drawLeaderboard() {
+  let m = isMobile();
+  let cx = width / 2;
+
+  fill(0, 0, 0, 180);
+  noStroke();
+  rect(0, 0, width, height);
+
+  fill(255, 220, 50);
+  textAlign(CENTER, CENTER);
+  textSize(m ? 24 : 36);
+  text("LEADERBOARD", cx, m ? 40 : 55);
+
+  fill(150);
+  textSize(m ? 12 : 14);
+  text("TOP 20 SCORES", cx, m ? 65 : 85);
+
+  if (!leaderboardLoaded) {
+    fill(200);
+    textSize(m ? 16 : 20);
+    text("Loading...", cx, height / 2);
+    return;
+  }
+
+  if (leaderboardData.length === 0) {
+    fill(200);
+    textSize(m ? 16 : 20);
+    text("No scores yet — be the first!", cx, height / 2);
+  } else {
+    let startY = m ? 90 : 115;
+    let rowH = m ? 26 : 32;
+    let colRank = cx - (m ? 130 : 180);
+    let colName = cx - (m ? 70 : 100);
+    let colScore = cx + (m ? 50 : 80);
+    let colPlanets = cx + (m ? 120 : 170);
+
+    // Header
+    fill(150);
+    textSize(m ? 12 : 14);
+    textAlign(LEFT);
+    text("#", colRank, startY);
+    text("NAME", colName, startY);
+    textAlign(RIGHT);
+    text("SCORE", colScore, startY);
+    text("PLANETS", colPlanets, startY);
+    startY += rowH;
+
+    // Rows
+    for (let i = 0; i < leaderboardData.length; i++) {
+      let d = leaderboardData[i];
+      let y = startY + i * rowH;
+      if (y > height - 80) break;
+
+      // Highlight top 3
+      if (i < 3) fill(255, 220, 50);
+      else fill(220);
+
+      textSize(m ? 14 : 17);
+      textAlign(LEFT);
+      text(i + 1, colRank, y);
+      text(d.initials || "???", colName, y);
+      textAlign(RIGHT);
+      text(d.score || 0, colScore, y);
+      text((d.planets || 0) + "/8", colPlanets, y);
+    }
+  }
+
+  // Back button
+  let btnW = m ? 160 : 200;
+  let btnH = m ? 40 : 45;
+  let btnX = cx - btnW / 2;
+  let btnY = height - (m ? 55 : 65);
+  fill(50, 120, 80);
+  noStroke();
+  rect(btnX, btnY, btnW, btnH, 10);
+  fill(255);
+  textSize(m ? 16 : 18);
+  text("BACK", cx, btnY + btnH / 2);
 }
 
 // ===========================
@@ -329,6 +624,25 @@ function drawIntroScreen() {
   fill(255);
   textSize(m ? 20 : 24);
   text("START MISSION", cx, btnY + btnH / 2);
+
+  // Leaderboard button below start
+  let lbW = m ? 180 : 200;
+  let lbH = m ? 34 : 38;
+  let lbX = cx - lbW / 2;
+  let lbY = btnY + btnH + 15;
+  fill(30, 60, 120);
+  noStroke();
+  rect(lbX, lbY, lbW, lbH, 8);
+  fill(255);
+  textSize(m ? 14 : 16);
+  text("LEADERBOARD", cx, lbY + lbH / 2);
+
+  // Player name display
+  if (playerInitials) {
+    fill(150);
+    textSize(m ? 12 : 14);
+    text("Playing as: " + playerInitials, cx, btnY - (m ? 18 : 25));
+  }
 }
 
 // ===========================
@@ -1251,19 +1565,43 @@ function drawWinScreen() {
   textAlign(CENTER, CENTER);
   fill(100, 255, 150);
   textSize(m ? 24 : 42);
-  text("SOLAR SYSTEM RESTORED!", width / 2, height / 2 - 50);
+  text(gameTimer <= 0 ? "TIME'S UP!" : "SOLAR SYSTEM RESTORED!", width / 2, height / 2 - 70);
+
+  fill(255, 220, 50);
+  textSize(m ? 14 : 18);
+  text(playerInitials, width / 2, height / 2 - 30);
 
   fill(255);
-  textSize(m ? 16 : 22);
-  text(`Final Score: ${score}`, width / 2, height / 2 + 10);
+  textSize(m ? 20 : 28);
+  text(`Final Score: ${score}`, width / 2, height / 2 + 5);
 
   fill(200);
-  textSize(m ? 12 : 16);
-  text("All planets are now habitable.", width / 2, height / 2 + 50);
+  textSize(m ? 13 : 16);
+  text(`Planets Restored: ${planetsRestored}/${planets.length}`, width / 2, height / 2 + 40);
 
-  fill(255, 255, 100);
-  textSize(m ? 12 : 14);
-  text(m ? "Tap to play again" : "Press R to play again", width / 2, height / 2 + 90);
+  // Play again button
+  let btnW = m ? 180 : 220;
+  let btnH = m ? 40 : 45;
+  let btnX = width / 2 - btnW / 2;
+  let btnY1 = height / 2 + 70;
+  fill(50, 160, 90);
+  noStroke();
+  rect(btnX, btnY1, btnW, btnH, 10);
+  fill(255);
+  textSize(m ? 16 : 18);
+  text("PLAY AGAIN", width / 2, btnY1 + btnH / 2);
+
+  // Leaderboard button
+  let lbW = m ? 180 : 220;
+  let lbH = m ? 38 : 42;
+  let lbX = width / 2 - lbW / 2;
+  let lbY = btnY1 + btnH + 12;
+  fill(30, 60, 120);
+  noStroke();
+  rect(lbX, lbY, lbW, lbH, 10);
+  fill(255);
+  textSize(m ? 14 : 16);
+  text("LEADERBOARD", width / 2, lbY + lbH / 2);
 }
 
 // ===========================
@@ -1366,6 +1704,77 @@ function touchMoved() {
 }
 
 function mousePressed() {
+  if (gameState === "NAME") {
+    let m = isMobile();
+    let cx = width / 2;
+    let cy = height / 2;
+
+    if (m) {
+      // Mobile keyboard hit detection
+      let letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      let cols = 7;
+      let keySize = min(38, (width - 40) / cols - 4);
+      let keyGap = 4;
+      let keysW = cols * (keySize + keyGap);
+      let keysStartX = cx - keysW / 2;
+      let boxSize = 55;
+      let boxY = cy * 0.85;
+      let keysStartY = boxY + boxSize + 25;
+
+      for (let k = 0; k < letters.length; k++) {
+        let col = k % cols;
+        let row = floor(k / cols);
+        let kx = keysStartX + col * (keySize + keyGap);
+        let ky = keysStartY + row * (keySize + keyGap);
+        if (hitTest(kx, ky, keySize, keySize)) {
+          if (initialsPos < 3) {
+            initialsInput[initialsPos] = letters[k];
+            initialsPos++;
+            if (initialsPos >= 3) {
+              playerInitials = initialsInput.join("");
+              gameState = "INTRO";
+            }
+          }
+          return;
+        }
+      }
+
+      // Delete button
+      let bkRows = ceil(letters.length / cols);
+      let bkY = keysStartY + bkRows * (keySize + keyGap) + 8;
+      if (hitTest(cx - 55, bkY, 110, 36)) {
+        if (initialsPos > 0) {
+          initialsPos--;
+          initialsInput[initialsPos] = "_";
+        }
+        return;
+      }
+    }
+
+    // Leaderboard button
+    let lbW = m ? 180 : 200;
+    let lbH = m ? 38 : 40;
+    let lbX = cx - lbW / 2;
+    let lbY = height - (m ? 55 : 70);
+    if (hitTest(lbX, lbY, lbW, lbH)) {
+      loadLeaderboard();
+      gameState = "LEADERBOARD";
+    }
+    return;
+  }
+
+  if (gameState === "LEADERBOARD") {
+    let m = isMobile();
+    let btnW = m ? 160 : 200;
+    let btnH = m ? 40 : 45;
+    let btnX = width / 2 - btnW / 2;
+    let btnY = height - (m ? 55 : 65);
+    if (hitTest(btnX, btnY, btnW, btnH)) {
+      gameState = playerInitials ? "INTRO" : "NAME";
+    }
+    return;
+  }
+
   if (gameState === "INTRO") {
     let m = isMobile();
     let btnW = m ? width * 0.6 : 280;
@@ -1374,13 +1783,40 @@ function mousePressed() {
     let btnY = height - (m ? 65 : 100);
     if (hitTest(btnX, btnY, btnW, btnH)) {
       gameState = "SPACE";
-      addMessage("Click any planet to begin terraforming!", 300);
+      gameTimerStarted = true;
+      addMessage("Click any planet to begin terraforming! You have 5 minutes!", 300);
+    }
+
+    // Leaderboard button on intro screen
+    let lbW2 = m ? 180 : 200;
+    let lbH2 = m ? 38 : 40;
+    let lbX2 = width / 2 - lbW2 / 2;
+    let lbY2 = btnY + btnH + 15;
+    if (hitTest(lbX2, lbY2, lbW2, lbH2)) {
+      loadLeaderboard();
+      gameState = "LEADERBOARD";
     }
     return;
   }
 
   if (gameState === "WIN") {
-    if (isMobile()) resetGame();
+    let m = isMobile();
+    let btnW = m ? 180 : 220;
+    let btnH = m ? 40 : 45;
+    let btnX = width / 2 - btnW / 2;
+    let btnY1 = height / 2 + 70;
+    if (hitTest(btnX, btnY1, btnW, btnH)) {
+      resetGame();
+      return;
+    }
+    let lbW = m ? 180 : 220;
+    let lbH = m ? 38 : 42;
+    let lbX = width / 2 - lbW / 2;
+    let lbY = btnY1 + btnH + 12;
+    if (hitTest(lbX, lbY, lbW, lbH)) {
+      loadLeaderboard();
+      gameState = "LEADERBOARD";
+    }
     return;
   }
 
@@ -1567,7 +2003,7 @@ function mousePressed() {
               spawnParticles(mouseX, mouseY, [100, 255, 100], 25);
               irrigationMode = false;
               if (planetsRestored >= planets.length) {
-                gameState = "WIN";
+                gameState = "WIN"; saveScore();
               } else {
                 autoAdvanceTimer = 90;
               }
@@ -1668,7 +2104,7 @@ function mouseReleased() {
           milestone("firstPlanetRestored", "You restored your first planet! Head to the next one and keep going!");
             spawnParticles(mouseX, mouseY, [100, 255, 100], 25);
             if (planetsRestored >= planets.length) {
-              gameState = "WIN";
+              gameState = "WIN"; saveScore();
             } else {
               autoAdvanceTimer = 90;
             }
@@ -1715,7 +2151,7 @@ function mouseReleased() {
           milestone("firstPlanetRestored", "You restored your first planet! Head to the next one and keep going!");
           spawnParticles(mouseX, mouseY, [100, 255, 100], 25);
           if (planetsRestored >= planets.length) {
-            gameState = "WIN";
+            gameState = "WIN"; saveScore();
           } else {
             autoAdvanceTimer = 90;
           }
@@ -1742,6 +2178,26 @@ function mouseReleased() {
 }
 
 function keyPressed() {
+  // Name entry (desktop keyboard)
+  if (gameState === "NAME") {
+    if (key.length === 1 && key.match(/[a-zA-Z]/)) {
+      if (initialsPos < 3) {
+        initialsInput[initialsPos] = key.toUpperCase();
+        initialsPos++;
+        if (initialsPos >= 3) {
+          playerInitials = initialsInput.join("");
+          gameState = "INTRO";
+        }
+      }
+    } else if (keyCode === BACKSPACE) {
+      if (initialsPos > 0) {
+        initialsPos--;
+        initialsInput[initialsPos] = "_";
+      }
+    }
+    return;
+  }
+
   if (keyCode === ESCAPE && gameState === "SURFACE") {
     saveSurface();
     gameState = "SPACE";
@@ -1764,8 +2220,13 @@ function resetGame() {
   }
   for (let k in milestones) milestones[k] = false;
   savedGrids = {};
+  gameTimer = 300;
+  gameTimerStarted = false;
   currentPIdx = 2;
-  gameState = "INTRO";
+  gameState = "NAME";
+  initialsInput = ["_", "_", "_"];
+  initialsPos = 0;
+  playerInitials = "";
 }
 
 // ===========================
