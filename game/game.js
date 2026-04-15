@@ -63,6 +63,7 @@ let dragging = null;
 
 // Surface grid
 let surfaceGrid = [];
+let savedGrids = {}; // keyed by planet index — persists grids between visits
 const GRID_COLS = 10, GRID_ROWS = 8;
 
 // Particles & messages
@@ -193,6 +194,7 @@ function draw() {
         text(`Heading to ${planets[nextP].name} in ${Math.ceil(autoAdvanceTimer / 60)}...`, (width - 260) / 2, height / 2);
       }
       if (autoAdvanceTimer <= 0 && nextP !== -1) {
+        saveSurface();
         currentPIdx = nextP;
         landingProgress = 0;
         gameState = "LANDING";
@@ -623,7 +625,7 @@ function drawLandingAnimation() {
 
   if (landingProgress >= 1) {
     gameState = "SURFACE";
-    generateSurface();
+    loadOrGenerateSurface();
     addMessage(p.fact);
     let weightHere = (playerWeight * p.gravity / 9.81).toFixed(1);
     addMessage(`Your weight on ${p.name}: ${weightHere} kg (gravity: ${p.gravity} m/s²)`);
@@ -1152,6 +1154,27 @@ function drawDraggableIcon(x, y, label, count, col, type, sz) {
 //       SYSTEMS
 // ===========================
 
+function loadOrGenerateSurface() {
+  irrigationMode = false;
+  if (savedGrids[currentPIdx]) {
+    // Restore saved grid
+    surfaceGrid = savedGrids[currentPIdx].grid;
+    irrigationConnections = savedGrids[currentPIdx].connections;
+  } else {
+    // First visit — generate fresh
+    generateSurface();
+  }
+}
+
+function saveSurface() {
+  if (surfaceGrid.length > 0) {
+    savedGrids[currentPIdx] = {
+      grid: surfaceGrid,
+      connections: irrigationConnections
+    };
+  }
+}
+
 function generateSurface() {
   surfaceGrid = [];
   irrigationMode = false;
@@ -1208,6 +1231,7 @@ function updateSurvival() {
     if (airSupply <= 0) {
       airSupply = 0;
       addMessage("AIR DEPLETED! Emergency return to space!");
+      saveSurface();
       gameState = "SPACE";
       airSupply = max(30, 100 - (100 - planets[currentPIdx].hab) * 0.3); // Partial refill
     }
@@ -1441,6 +1465,7 @@ function mousePressed() {
       let backW = width - irrW - pad * 3;
       let backX = irrW + pad * 2;
       if (hitTest(backX, btnRow, backW, irrH)) {
+        saveSurface();
         gameState = "SPACE";
         irrigationMode = false;
         addMessage("Returned to orbit.");
@@ -1718,6 +1743,7 @@ function mouseReleased() {
 
 function keyPressed() {
   if (keyCode === ESCAPE && gameState === "SURFACE") {
+    saveSurface();
     gameState = "SPACE";
     irrigationMode = false;
     addMessage("Returned to orbit.");
@@ -1737,6 +1763,7 @@ function resetGame() {
     p.hab = p.name === "Earth" ? 100 : 0;
   }
   for (let k in milestones) milestones[k] = false;
+  savedGrids = {};
   currentPIdx = 2;
   gameState = "INTRO";
 }
