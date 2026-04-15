@@ -41,7 +41,7 @@ let milestones = {
 
 // Text scale — everything bigger
 function T(size) {
-  let scale = isMobile() ? 1.25 : 1.4;
+  let scale = isMobile() ? 1.6 : 1.4;
   return size * scale;
 }
 
@@ -247,31 +247,39 @@ function drawIntroScreen() {
   fill(255, 255, 255, 220);
 
   let steps = [
-    ["1.", "Click a planet to land on it", [255, 200, 100]],
-    ["2.", "Tap tiles to DIG for water, minerals & seeds", [180, 140, 100]],
-    ["3.", "Drag bricks to villages -- 10 bricks = a HOUSE (+5 Space Bucks!)", [180, 70, 50]],
-    ["4.", "Drag seeds to dirt to grow vegetation", [60, 200, 60]],
-    ["5.", "Build irrigation pipes from water to villages", [50, 120, 255]],
-    ["6.", "Get each planet to 100% habitability to restore it!", [100, 255, 100]],
+    ["1.", "Tap a PLANET to land on it", [255, 200, 100]],
+    ["2.", "Tap ground tiles to DIG for resources", [180, 140, 100]],
+    ["3.", "Drag BRICKS to purple villages (10 = house!)", [180, 70, 50]],
+    ["4.", "Drag SEEDS to dug dirt to grow plants", [60, 200, 60]],
+    ["5.", "Build IRRIGATION pipes from water to villages", [50, 120, 255]],
+    ["6.", "Reach 100% habitability to restore a planet!", [100, 255, 100]],
   ];
 
   for (let i = 0; i < steps.length; i++) {
     let y = startY + i * lineH;
     fill(steps[i][2][0], steps[i][2][1], steps[i][2][2]);
     textAlign(RIGHT);
-    text(steps[i][0], cx - (m ? 120 : 200), y);
-    fill(230);
+    text(steps[i][0], cx - (m ? 130 : 200), y);
+    fill(240);
     textAlign(LEFT);
-    textSize(m ? 12 : 16);
-    text(steps[i][1], cx - (m ? 110 : 185), y);
-    textSize(m ? 13 : 18);
+    textSize(m ? 14 : 16);
+    text(steps[i][1], cx - (m ? 118 : 185), y);
+    textSize(m ? 15 : 18);
   }
 
-  // Tip
-  fill(200, 200, 100);
+  // Air warning box
+  let tipY = startY + steps.length * lineH + (m ? 15 : 25);
+  fill(200, 50, 50, 60);
+  noStroke();
+  rect(cx - (m ? 160 : 220), tipY - 15, m ? 320 : 440, m ? 50 : 55, 8);
+
+  fill(255, 100, 100);
   textAlign(CENTER);
-  textSize(m ? 11 : 15);
-  text("Watch your air supply! Higher gravity = faster drain.", cx, startY + steps.length * lineH + (m ? 20 : 30));
+  textSize(m ? 14 : 16);
+  text("YOUR AIR IS ALWAYS DRAINING!", cx, tipY);
+  fill(200, 200, 150);
+  textSize(m ? 12 : 14);
+  text("Higher gravity = faster drain. Use Air Tanks and Space Bucks to refill!", cx, tipY + (m ? 18 : 22));
 
   // Start button
   let btnW = m ? 200 : 280;
@@ -435,7 +443,7 @@ function drawSpaceUI() {
       noStroke();
       circle(px, py - 4, 10);
       fill(180);
-      textSize(7);
+      textSize(9);
       textAlign(CENTER);
       text(p.name.substring(0, 3), px, py + 10);
     }
@@ -488,8 +496,8 @@ function drawSpaceUI() {
   // Bottom hint
   fill(255, 255, 255, 120);
   textAlign(CENTER);
-  textSize(m ? 13 : 16);
-  text(m ? "Tap a planet to land" : "Click a planet to land on its surface and begin terraforming", width / 2, m ? height - 38 : height - 25);
+  textSize(m ? 15 : 16);
+  text(m ? "Tap a planet to land on it!" : "Click a planet to land on its surface and begin terraforming", width / 2, m ? height - 40 : height - 25);
 
   // Resource display
   drawResourcePanel(10, m ? 42 : 65);
@@ -588,7 +596,7 @@ function drawLandingAnimation() {
     addMessage(`Your weight on ${p.name}: ${weightHere} kg (gravity: ${p.gravity} m/s²)`);
     addMessage(`Diameter: ${p.diameterKm.toLocaleString()} km = ${Math.round(p.diameterKm * 0.621371).toLocaleString()} miles`);
     if (!milestones.firstDig) {
-      addMessage("Click/tap the ground tiles to start digging for resources!", 360);
+      addMessage("TAP THE GROUND TILES to start digging for resources!", 360);
     }
   }
 }
@@ -629,7 +637,7 @@ function drawSurfaceView() {
   rect(0, 0, skyW, headerH);
   fill(255);
   textAlign(CENTER, CENTER);
-  textSize(L.mobile ? 15 : 20);
+  textSize(L.mobile ? 18 : 20);
   text(`${p.name} — SURFACE`, skyW / 2, headerH / 2);
 
   // Science info bar
@@ -643,8 +651,8 @@ function drawSurfaceView() {
     fill(0, 0, 0, 100);
     rect(0, headerH, skyW, 22);
     fill(200);
-    textSize(11);
-    text(`G: ${p.gravity} m/s²  |  D: ${p.diameterKm.toLocaleString()} km  |  Wt: ${(playerWeight * p.gravity / 9.81).toFixed(1)} kg`, skyW / 2, headerH + 11);
+    textSize(13);
+    text(`Gravity: ${p.gravity} m/s²  |  Weight: ${(playerWeight * p.gravity / 9.81).toFixed(1)} kg`, skyW / 2, headerH + 11);
   }
 
   // Draw grid
@@ -930,6 +938,7 @@ function drawSurfaceUIDesktop(L, p) {
 function drawSurfaceUIMobile(L, p) {
   let panelY = L.sidebarY;
   let panelH = L.sidebarH;
+  let pad = 10;
 
   // Panel background
   fill(15, 15, 30, 240);
@@ -941,39 +950,37 @@ function drawSurfaceUIMobile(L, p) {
   noStroke();
   rect(width / 2 - 20, panelY + 4, 40, 4, 2);
 
-  let pad = 8;
-  let col1 = pad;
-  let barW = width * 0.45;
+  // Row 1: AIR bar (full width, prominent)
+  let barW = width - pad * 2;
+  let barY = panelY + 14;
+  drawStatusBar(pad, barY, barW * 0.48, "AIR SUPPLY", airSupply, color(0, 180, 255));
+  drawStatusBar(pad + barW * 0.52, barY, barW * 0.48, "HABITABILITY", p.hab, color(0, 255, 100));
 
-  // Row 1: Air + Hab bars side by side
-  let barY = panelY + 16;
-  drawStatusBar(col1, barY, barW, "AIR", airSupply, color(0, 180, 255));
-  drawStatusBar(col1 + barW + 10, barY, barW, "HAB", p.hab, color(0, 255, 100));
-
-  // Row 2: Score, Space Bucks, Buy Air btn
-  let row2Y = barY + 30;
-  fill(200);
-  textSize(13);
+  // Row 2: Score + Space Bucks + BUY AIR
+  let row2Y = barY + 35;
+  fill(255);
+  textSize(14);
   textAlign(LEFT);
-  text(`Score: ${score} | ${planetsRestored}/${planets.length}`, col1, row2Y);
+  text(`Score: ${score}`, pad, row2Y);
   fill(255, 220, 50);
-  text(`$${resources.spaceBucks}`, col1 + width * 0.4, row2Y);
+  textSize(14);
+  text(`Space Bucks: ${resources.spaceBucks}`, pad + width * 0.35, row2Y);
 
-  let buyW = 70;
-  let buyH = 20;
+  let buyW = 90;
+  let buyH = 28;
   let buyX = width - buyW - pad;
-  let buyY = row2Y - 12;
+  let buyY = row2Y - 16;
   drawBuyAirBtn(buyX, buyY, buyW, buyH);
 
-  // Row 3: Resource icons — horizontal strip
-  let iconSize = min(42, (width - pad * 2) / 6 - 4);
-  let iconY = row2Y + 12;
+  // Row 3: Resource icons — bigger, full labels
+  let iconSize = min(48, (width - pad * 2) / 5.5);
+  let iconY = row2Y + 10;
   let iconSpacing = (width - pad * 2) / 5;
   let icons = [
-    { label: "BRK", val: resources.bricks, col: color(180, 70, 50), type: "bricks" },
+    { label: "BRICK", val: resources.bricks, col: color(180, 70, 50), type: "bricks" },
     { label: "AIR", val: resources.airTanks, col: color(100, 200, 255), type: "airTanks" },
-    { label: "MIN", val: resources.minerals, col: color(160, 160, 160), type: "minerals" },
-    { label: "H2O", val: resources.water, col: color(50, 120, 255), type: "water" },
+    { label: "MINERAL", val: resources.minerals, col: color(160, 160, 160), type: "minerals" },
+    { label: "WATER", val: resources.water, col: color(50, 120, 255), type: "water" },
     { label: "SEED", val: resources.seeds, col: color(60, 180, 60), type: "seeds" },
   ];
   for (let i = 0; i < icons.length; i++) {
@@ -981,29 +988,38 @@ function drawSurfaceUIMobile(L, p) {
     drawDraggableIcon(ix, iconY, icons[i].label, icons[i].val, icons[i].col, icons[i].type, iconSize);
   }
 
-  // Row 4: Irrigation button + Back button
-  let btnRow = iconY + iconSize + 22;
-  let irrW = width * 0.55;
-  let irrH = 30;
+  // Drag hint under icons
+  fill(180, 180, 180, 180);
+  textAlign(CENTER);
+  textSize(11);
+  text("Drag items UP onto the grid tiles above", width / 2, iconY + iconSize + 16);
+
+  // Row 4: Buttons
+  let btnRow = iconY + iconSize + 28;
+  let irrW = width * 0.50;
+  let irrH = 36;
   drawIrrigationBtn(pad, btnRow, irrW, irrH);
 
-  // Back to space button (replaces ESC on mobile)
+  // Back to space button
   let backW = width - irrW - pad * 3;
   let backX = irrW + pad * 2;
-  fill(100, 40, 40);
+  fill(120, 40, 40);
   noStroke();
   rect(backX, btnRow, backW, irrH, 8);
   fill(255);
   textAlign(CENTER, CENTER);
-  textSize(13);
+  textSize(15);
   text("BACK TO SPACE", backX + backW / 2, btnRow + irrH / 2);
 
   // Irrigation mode indicator
   if (irrigationMode) {
-    fill(100, 200, 255, 200);
+    fill(0, 0, 0, 180);
+    noStroke();
+    rect(0, panelY - 30, width, 26, 5);
+    fill(100, 220, 255);
     textAlign(CENTER);
-    textSize(11);
-    text("TAP dug tiles for pipes, TAP village to connect", width / 2, panelY - 8);
+    textSize(13);
+    text("IRRIGATION: Tap dug tiles for pipes, tap village to connect", width / 2, panelY - 18);
   }
 }
 
@@ -1017,8 +1033,8 @@ function drawBuyAirBtn(x, y, w, h) {
   rect(x, y, w, h, 5);
   fill(resources.spaceBucks >= 5 ? 255 : 80);
   textAlign(CENTER, CENTER);
-  textSize(min(13, w * 0.16));
-  text("BUY AIR", x + w / 2, y + h / 2);
+  textSize(min(14, w * 0.16));
+  text("BUY AIR ($5)", x + w / 2, y + h / 2);
 }
 
 function drawIrrigationBtn(x, y, w, h) {
@@ -1226,7 +1242,7 @@ function spawnParticles(x, y, col, count) {
 function drawMessages() {
   let L = getLayout();
   textAlign(LEFT);
-  textSize(L.mobile ? 13 : 15);
+  textSize(L.mobile ? 14 : 15);
   let msgBottom = L.mobile ? L.sidebarY - 5 : height - 20;
   let y = msgBottom;
   for (let i = messages.length - 1; i >= 0; i--) {
@@ -1332,17 +1348,18 @@ function mousePressed() {
     let sx = L.sidebarX;
     let pad = 8;
 
+    pad = 10;
+
     if (L.mobile) {
       // --- MOBILE HIT DETECTION ---
       let panelY = L.sidebarY;
-      let panelH = L.sidebarH;
-      let barY = panelY + 16;
-      let row2Y = barY + 30;
+      let barY = panelY + 14;
+      let row2Y = barY + 35;
 
       // Buy Air button
-      let buyW = 70, buyH = 20;
+      let buyW = 90, buyH = 28;
       let buyX = width - buyW - pad;
-      let buyY = row2Y - 12;
+      let buyY = row2Y - 16;
       if (hitTest(buyX, buyY, buyW, buyH)) {
         if (resources.spaceBucks >= 5) {
           resources.spaceBucks -= 5;
@@ -1351,14 +1368,14 @@ function mousePressed() {
           milestone("firstAirBuy", "Smart! Spend Space Bucks to stay alive longer on tough planets.");
           spawnParticles(mouseX, mouseY, [255, 220, 50], 8);
         } else {
-          addMessage("Not enough Space Bucks!");
+          addMessage("Not enough Space Bucks! Build houses first (10 bricks = 1 house = 5 bucks).");
         }
         return;
       }
 
       // Resource icons (horizontal strip)
-      let iconSize = min(42, (width - pad * 2) / 6 - 4);
-      let iconY = row2Y + 12;
+      let iconSize = min(48, (width - pad * 2) / 5.5);
+      let iconY = row2Y + 10;
       let iconSpacing = (width - pad * 2) / 5;
       let iconTypes = ["bricks", "airTanks", "minerals", "water", "seeds"];
       if (!irrigationMode) {
@@ -1372,9 +1389,9 @@ function mousePressed() {
       }
 
       // Irrigation button
-      let btnRow = iconY + iconSize + 22;
-      let irrW = width * 0.55;
-      let irrH = 30;
+      let btnRow = iconY + iconSize + 28;
+      let irrW = width * 0.50;
+      let irrH = 36;
       if (hitTest(pad, btnRow, irrW, irrH)) {
         let hasWS = false;
         for (let i = 0; i < GRID_COLS && !hasWS; i++)
