@@ -56,9 +56,56 @@ let autoAdvanceTimer = 0;
 let irrigationMode = false;
 let irrigationConnections = []; // tracks completed irrigation links for visual flow
 
+// Mobile / responsive layout
+let mobile = false;
+let SIDEBAR_W = 260;
+let PANEL_H = 0; // bottom panel height on mobile
+
+function isMobile() {
+  return width < 768;
+}
+
+function getLayout() {
+  let m = isMobile();
+  if (m) {
+    let panelH = height * 0.38;
+    let gridArea = { x: 0, y: 70, w: width, h: height - panelH - 70 };
+    return {
+      mobile: true,
+      sidebarX: 0,
+      sidebarY: height - panelH,
+      sidebarW: width,
+      sidebarH: panelH,
+      gridAreaW: width,
+      gridOffsetSub: 0,
+      skyW: width,
+      cellSize: min(gridArea.w / GRID_COLS, gridArea.h / GRID_ROWS),
+      gridOx: 0, // recalculated after cellSize
+      gridOy: gridArea.y,
+      ts: max(8, width / 55), // scaled text size base
+    };
+  } else {
+    return {
+      mobile: false,
+      sidebarX: width - 255,
+      sidebarY: 0,
+      sidebarW: 260,
+      sidebarH: height,
+      gridAreaW: width - 280,
+      gridOffsetSub: 260,
+      skyW: width - 260,
+      cellSize: min((width - 280) / GRID_COLS, (height - 160) / GRID_ROWS),
+      gridOx: 0, // recalculated
+      gridOy: 90,
+      ts: 11,
+    };
+  }
+}
+
 function setup() {
   createCanvas(windowWidth, windowHeight);
   textFont("monospace");
+  mobile = isMobile();
 
   sun = { x: width / 2, y: height / 2, radius: 35 };
 
@@ -241,104 +288,151 @@ function drawSpaceView() {
 }
 
 function drawSpaceUI() {
+  let m = isMobile();
+
   // Top bar
   fill(0, 0, 0, 180);
   noStroke();
-  rect(0, 0, width, 50);
+  rect(0, 0, width, m ? 35 : 50);
 
   fill(255);
   textAlign(LEFT, CENTER);
-  textSize(14);
-  text(`SCORE: ${score}`, 15, 25);
-  text(`RESTORED: ${planetsRestored}/${planets.length}`, 160, 25);
+  textSize(m ? 11 : 14);
+  let topY = m ? 17 : 25;
+  text(`SCORE: ${score}`, 10, topY);
+  text(`${planetsRestored}/${planets.length}`, m ? 120 : 160, topY);
 
-  textAlign(CENTER, CENTER);
-  textSize(13);
-  fill(200);
-  text("ASTRA-REFORM: THE SOLAR RESTORATION", width / 2, 25);
+  if (!m) {
+    textAlign(CENTER, CENTER);
+    textSize(13);
+    fill(200);
+    text("ASTRA-REFORM: THE SOLAR RESTORATION", width / 2, 25);
+  }
 
-  // Right sidebar — planet status
-  let sideX = width - 200;
-  let sideY = 65;
-  fill(0, 0, 0, 170);
-  noStroke();
-  rect(sideX - 10, sideY - 10, 205, planets.length * 30 + 25, 8);
-
-  textSize(11);
-  textAlign(LEFT);
-  fill(180);
-  text("PLANET STATUS", sideX, sideY + 2);
-
-  for (let i = 0; i < planets.length; i++) {
-    let p = planets[i];
-    let y = sideY + 20 + i * 30;
-
-    fill(p.color[0], p.color[1], p.color[2]);
+  // Planet status panel
+  if (m) {
+    // Bottom strip on mobile
+    let stripH = 30;
+    let stripY = height - stripH;
+    fill(0, 0, 0, 180);
     noStroke();
-    circle(sideX + 6, y + 6, 10);
+    rect(0, stripY, width, stripH);
+    let dotSpacing = width / planets.length;
+    for (let i = 0; i < planets.length; i++) {
+      let px = dotSpacing * (i + 0.5);
+      let py = stripY + stripH / 2;
+      let p = planets[i];
+      if (p.hab >= 100) fill(100, 255, 100);
+      else fill(p.color[0], p.color[1], p.color[2]);
+      noStroke();
+      circle(px, py - 4, 10);
+      fill(180);
+      textSize(7);
+      textAlign(CENTER);
+      text(p.name.substring(0, 3), px, py + 10);
+    }
+  } else {
+    // Right sidebar on desktop
+    let sideX = width - 200;
+    let sideY = 65;
+    fill(0, 0, 0, 170);
+    noStroke();
+    rect(sideX - 10, sideY - 10, 205, planets.length * 30 + 25, 8);
 
-    fill(255);
-    textSize(10);
-    text(p.name, sideX + 18, y + 10);
+    textSize(11);
+    textAlign(LEFT);
+    fill(180);
+    text("PLANET STATUS", sideX, sideY + 2);
 
-    // Progress bar
-    let barX = sideX + 85;
-    let barW = 80;
-    fill(40);
-    rect(barX, y + 1, barW, 10, 3);
-    if (p.hab >= 100) fill(100, 255, 100);
-    else if (p.hab > 0) fill(200, 200, 50);
-    else fill(40);
-    rect(barX, y + 1, barW * (p.hab / 100), 10, 3);
+    for (let i = 0; i < planets.length; i++) {
+      let p = planets[i];
+      let y = sideY + 20 + i * 30;
 
-    if (p.hab >= 100) {
-      fill(100, 255, 100);
+      fill(p.color[0], p.color[1], p.color[2]);
+      noStroke();
+      circle(sideX + 6, y + 6, 10);
+
+      fill(255);
       textSize(10);
-      text("✓", sideX + 172, y + 10);
-    } else {
-      fill(150);
-      textSize(9);
-      text(Math.round(p.hab) + "%", sideX + 170, y + 10);
+      text(p.name, sideX + 18, y + 10);
+
+      let barX = sideX + 85;
+      let barW = 80;
+      fill(40);
+      rect(barX, y + 1, barW, 10, 3);
+      if (p.hab >= 100) fill(100, 255, 100);
+      else if (p.hab > 0) fill(200, 200, 50);
+      else fill(40);
+      rect(barX, y + 1, barW * (p.hab / 100), 10, 3);
+
+      if (p.hab >= 100) {
+        fill(100, 255, 100);
+        textSize(10);
+        text("✓", sideX + 172, y + 10);
+      } else {
+        fill(150);
+        textSize(9);
+        text(Math.round(p.hab) + "%", sideX + 170, y + 10);
+      }
     }
   }
 
   // Bottom hint
   fill(255, 255, 255, 120);
   textAlign(CENTER);
-  textSize(12);
-  text("Click a planet to land on its surface and begin terraforming", width / 2, height - 25);
+  textSize(m ? 10 : 12);
+  text(m ? "Tap a planet to land" : "Click a planet to land on its surface and begin terraforming", width / 2, m ? height - 38 : height - 25);
 
   // Resource display
-  drawResourcePanel(15, 65);
+  drawResourcePanel(10, m ? 42 : 65);
 }
 
 function drawResourcePanel(x, y) {
-  fill(0, 0, 0, 170);
-  noStroke();
-  rect(x - 5, y - 10, 180, 185, 8);
-
-  fill(180);
-  textAlign(LEFT);
-  textSize(11);
-  text("RESOURCES", x + 5, y + 3);
-
+  let m = isMobile();
   let items = [
     { label: "Bricks", val: resources.bricks, col: color(180, 70, 50) },
-    { label: "Air Tanks", val: resources.airTanks, col: color(100, 200, 255) },
-    { label: "Minerals", val: resources.minerals, col: color(160, 160, 160) },
-    { label: "Water", val: resources.water, col: color(50, 120, 255) },
+    { label: "Air", val: resources.airTanks, col: color(100, 200, 255) },
+    { label: "Min", val: resources.minerals, col: color(160, 160, 160) },
+    { label: "H2O", val: resources.water, col: color(50, 120, 255) },
     { label: "Seeds", val: resources.seeds, col: color(60, 180, 60) },
-    { label: "Space Bucks", val: resources.spaceBucks, col: color(255, 220, 50) }
+    { label: "$", val: resources.spaceBucks, col: color(255, 220, 50) }
   ];
 
-  for (let i = 0; i < items.length; i++) {
-    let iy = y + 20 + i * 25;
-    fill(items[i].col);
+  if (m) {
+    // Compact horizontal strip
+    let stripW = min(width - 20, items.length * 55);
+    fill(0, 0, 0, 170);
     noStroke();
-    rect(x + 5, iy, 14, 14, 3);
-    fill(255);
+    rect(x - 3, y - 5, stripW + 6, 22, 5);
+    for (let i = 0; i < items.length; i++) {
+      let ix = x + i * (stripW / items.length);
+      fill(items[i].col);
+      noStroke();
+      rect(ix + 2, y, 8, 8, 2);
+      fill(255);
+      textSize(8);
+      textAlign(LEFT);
+      text(`${items[i].val}`, ix + 13, y + 8);
+    }
+  } else {
+    fill(0, 0, 0, 170);
+    noStroke();
+    rect(x - 5, y - 10, 180, 185, 8);
+
+    fill(180);
+    textAlign(LEFT);
     textSize(11);
-    text(`${items[i].label}: ${items[i].val}`, x + 25, iy + 11);
+    text("RESOURCES", x + 5, y + 3);
+
+    for (let i = 0; i < items.length; i++) {
+      let iy = y + 20 + i * 25;
+      fill(items[i].col);
+      noStroke();
+      rect(x + 5, iy, 14, 14, 3);
+      fill(255);
+      textSize(11);
+      text(`${items[i].label}: ${items[i].val}`, x + 25, iy + 11);
+    }
   }
 }
 
@@ -393,12 +487,14 @@ function drawLandingAnimation() {
 // ===========================
 
 function drawSurfaceView() {
+  let L = getLayout();
   let p = planets[currentPIdx];
-  let cellSize = min((width - 280) / GRID_COLS, (height - 160) / GRID_ROWS);
+  let cellSize = L.cellSize;
   let gridW = cellSize * GRID_COLS;
   let gridH = cellSize * GRID_ROWS;
-  let ox = (width - 260 - gridW) / 2;
-  let oy = 90;
+  let ox = L.mobile ? (width - gridW) / 2 : (width - 260 - gridW) / 2;
+  let oy = L.gridOy;
+  let skyW = L.mobile ? width : width - 260;
 
   // Sky gradient based on habitability
   let skyTop = lerpColor(color(5, 5, 15), color(30, 80, 140), p.hab / 100);
@@ -406,30 +502,39 @@ function drawSurfaceView() {
   for (let y = 0; y < oy; y++) {
     let inter = map(y, 0, oy, 0, 1);
     stroke(lerpColor(skyTop, skyBot, inter));
-    line(0, y, width - 260, y);
+    line(0, y, skyW, y);
   }
 
   // Ground color under grid
   let groundC = lerpColor(color(p.color[0] * 0.5, p.color[1] * 0.5, p.color[2] * 0.5), color(60, 140, 80), p.hab / 100);
   fill(groundC);
   noStroke();
-  rect(0, oy, width - 260, height - oy);
+  rect(0, oy, skyW, height - oy);
 
   // Planet name header
+  let headerH = L.mobile ? 35 : 50;
   fill(0, 0, 0, 140);
   noStroke();
-  rect(0, 0, width - 260, 50);
+  rect(0, 0, skyW, headerH);
   fill(255);
   textAlign(CENTER, CENTER);
-  textSize(16);
-  text(`${p.name} — SURFACE OPERATIONS`, (width - 260) / 2, 25);
+  textSize(L.mobile ? 12 : 16);
+  text(`${p.name} — SURFACE`, skyW / 2, headerH / 2);
 
   // Science info bar
-  fill(0, 0, 0, 100);
-  rect(0, 50, width - 260, 35);
-  fill(200);
-  textSize(11);
-  text(`Gravity: ${p.gravity} m/s²  |  Diameter: ${p.diameterKm.toLocaleString()} km (${Math.round(p.diameterKm * 0.621371).toLocaleString()} mi)  |  Your weight: ${(playerWeight * p.gravity / 9.81).toFixed(1)} kg`, (width - 260) / 2, 67);
+  if (!L.mobile) {
+    fill(0, 0, 0, 100);
+    rect(0, 50, skyW, 35);
+    fill(200);
+    textSize(11);
+    text(`Gravity: ${p.gravity} m/s²  |  Diameter: ${p.diameterKm.toLocaleString()} km (${Math.round(p.diameterKm * 0.621371).toLocaleString()} mi)  |  Your weight: ${(playerWeight * p.gravity / 9.81).toFixed(1)} kg`, skyW / 2, 67);
+  } else {
+    fill(0, 0, 0, 100);
+    rect(0, headerH, skyW, 22);
+    fill(200);
+    textSize(9);
+    text(`G: ${p.gravity} m/s²  |  D: ${p.diameterKm.toLocaleString()} km  |  Wt: ${(playerWeight * p.gravity / 9.81).toFixed(1)} kg`, skyW / 2, headerH + 11);
+  }
 
   // Draw grid
   for (let i = 0; i < GRID_COLS; i++) {
@@ -603,22 +708,34 @@ function drawSurfaceView() {
     }
   }
 
-  // Grid legend
-  fill(255, 150);
-  textAlign(LEFT);
-  textSize(10);
-  let ly = oy + gridH + 15;
-  let legendText = "Click tiles to dig  |  Drag resources onto villages  |  ESC = return to space";
-  if (irrigationMode) {
-    fill(100, 200, 255, 200);
-    legendText = "IRRIGATION MODE: Click dug tiles to lay pipes (1 water each)  |  Connect water to a village!  |  Click button again to cancel";
+  // Grid legend (desktop only)
+  if (!L.mobile) {
+    fill(255, 150);
+    textAlign(LEFT);
+    textSize(10);
+    let ly = oy + gridH + 15;
+    let legendText = "Click tiles to dig  |  Drag resources onto villages  |  ESC = return to space";
+    if (irrigationMode) {
+      fill(100, 200, 255, 200);
+      legendText = "IRRIGATION MODE: Click dug tiles to lay pipes (1 water each)  |  Connect water to a village!  |  Click button again to cancel";
+    }
+    text(legendText, ox, ly);
   }
-  text(legendText, ox, ly);
 }
 
 function drawSurfaceUI() {
-  // Right sidebar
-  let sx = width - 255;
+  let L = getLayout();
+  let p = planets[currentPIdx];
+
+  if (L.mobile) {
+    drawSurfaceUIMobile(L, p);
+  } else {
+    drawSurfaceUIDesktop(L, p);
+  }
+}
+
+function drawSurfaceUIDesktop(L, p) {
+  let sx = L.sidebarX;
   fill(15, 15, 30);
   noStroke();
   rect(sx, 0, 260, height);
@@ -628,49 +745,24 @@ function drawSurfaceUI() {
   textSize(14);
   text("MISSION CONTROL", sx + 15, 35);
 
-  let p = planets[currentPIdx];
-
-  // Air supply bar
   drawStatusBar(sx + 15, 60, 225, "AIR SUPPLY", airSupply, color(0, 180, 255));
-
-  // Habitability bar
   drawStatusBar(sx + 15, 110, 225, `${p.name} HABITABILITY`, p.hab, color(0, 255, 100));
 
-  // Score
   fill(200);
   textSize(11);
   text(`Score: ${score}  |  Restored: ${planetsRestored}/${planets.length}`, sx + 15, 165);
 
-  // Space Bucks display and Buy Air button
   fill(255, 220, 50);
   textSize(12);
   textAlign(LEFT);
   text(`Space Bucks: ${resources.spaceBucks}`, sx + 15, 185);
 
-  // Buy Air button (5 space bucks = +25 air)
   let buyBtnX = sx + 140;
   let buyBtnY = 173;
   let buyBtnW = 100;
   let buyBtnH = 22;
-  if (resources.spaceBucks >= 5) {
-    fill(0, 150, 200);
-    noStroke();
-    rect(buyBtnX, buyBtnY, buyBtnW, buyBtnH, 5);
-    fill(255);
-    textAlign(CENTER, CENTER);
-    textSize(10);
-    text("BUY AIR (5\u00A2)", buyBtnX + buyBtnW / 2, buyBtnY + buyBtnH / 2);
-  } else {
-    fill(40);
-    noStroke();
-    rect(buyBtnX, buyBtnY, buyBtnW, buyBtnH, 5);
-    fill(80);
-    textAlign(CENTER, CENTER);
-    textSize(10);
-    text("BUY AIR (5\u00A2)", buyBtnX + buyBtnW / 2, buyBtnY + buyBtnH / 2);
-  }
+  drawBuyAirBtn(buyBtnX, buyBtnY, buyBtnW, buyBtnH);
 
-  // Draggable resource icons
   let iconX = sx + 30;
   drawDraggableIcon(iconX, 195, "BRICKS", resources.bricks, color(180, 70, 50), "bricks");
   drawDraggableIcon(iconX, 280, "AIR TANK", resources.airTanks, color(100, 200, 255), "airTanks");
@@ -678,50 +770,7 @@ function drawSurfaceUI() {
   drawDraggableIcon(iconX + 110, 280, "WATER", resources.water, color(50, 120, 255), "water");
   drawDraggableIcon(iconX, 365, "SEEDS", resources.seeds, color(60, 180, 60), "seeds");
 
-  // Irrigation button
-  let irrBtnY = 450;
-  let irrBtnW = 225;
-  let irrBtnH = 40;
-  let hasWaterSources = false;
-  for (let i = 0; i < GRID_COLS && !hasWaterSources; i++)
-    for (let j = 0; j < GRID_ROWS && !hasWaterSources; j++)
-      if (surfaceGrid[i] && surfaceGrid[i][j] && surfaceGrid[i][j].dug && surfaceGrid[i][j].hasWater) hasWaterSources = true;
-
-  if (hasWaterSources && resources.water > 0) {
-    if (irrigationMode) {
-      fill(30, 120, 255);
-      stroke(100, 200, 255);
-      strokeWeight(2);
-    } else {
-      fill(20, 60, 140);
-      noStroke();
-    }
-    rect(sx + 15, irrBtnY, irrBtnW, irrBtnH, 8);
-    fill(255);
-    noStroke();
-    textAlign(CENTER, CENTER);
-    textSize(13);
-    text(irrigationMode ? "CANCEL IRRIGATION" : "BUILD IRRIGATION", sx + 15 + irrBtnW / 2, irrBtnY + irrBtnH / 2);
-    textSize(9);
-    fill(180, 220, 255);
-    text(`(costs 1 water per pipe tile)`, sx + 15 + irrBtnW / 2, irrBtnY + irrBtnH + 12);
-  } else if (!hasWaterSources) {
-    fill(60);
-    noStroke();
-    rect(sx + 15, irrBtnY, irrBtnW, irrBtnH, 8);
-    fill(100);
-    textAlign(CENTER, CENTER);
-    textSize(11);
-    text("Dig to find water first!", sx + 15 + irrBtnW / 2, irrBtnY + irrBtnH / 2);
-  } else {
-    fill(60);
-    noStroke();
-    rect(sx + 15, irrBtnY, irrBtnW, irrBtnH, 8);
-    fill(100);
-    textAlign(CENTER, CENTER);
-    textSize(11);
-    text("Need water to build irrigation", sx + 15 + irrBtnW / 2, irrBtnY + irrBtnH / 2);
-  }
+  drawIrrigationBtn(sx + 15, 450, 225, 40);
 
   // Instructions
   fill(150);
@@ -767,6 +816,132 @@ function drawSurfaceUI() {
   text("Press ESC to return to space", sx + 15, height - 20);
 }
 
+function drawSurfaceUIMobile(L, p) {
+  let panelY = L.sidebarY;
+  let panelH = L.sidebarH;
+
+  // Panel background
+  fill(15, 15, 30, 240);
+  noStroke();
+  rect(0, panelY, width, panelH);
+
+  // Drag handle
+  fill(80);
+  noStroke();
+  rect(width / 2 - 20, panelY + 4, 40, 4, 2);
+
+  let pad = 8;
+  let col1 = pad;
+  let barW = width * 0.45;
+
+  // Row 1: Air + Hab bars side by side
+  let barY = panelY + 16;
+  drawStatusBar(col1, barY, barW, "AIR", airSupply, color(0, 180, 255));
+  drawStatusBar(col1 + barW + 10, barY, barW, "HAB", p.hab, color(0, 255, 100));
+
+  // Row 2: Score, Space Bucks, Buy Air btn
+  let row2Y = barY + 30;
+  fill(200);
+  textSize(10);
+  textAlign(LEFT);
+  text(`Score: ${score} | ${planetsRestored}/${planets.length}`, col1, row2Y);
+  fill(255, 220, 50);
+  text(`$${resources.spaceBucks}`, col1 + width * 0.4, row2Y);
+
+  let buyW = 70;
+  let buyH = 20;
+  let buyX = width - buyW - pad;
+  let buyY = row2Y - 12;
+  drawBuyAirBtn(buyX, buyY, buyW, buyH);
+
+  // Row 3: Resource icons — horizontal strip
+  let iconSize = min(42, (width - pad * 2) / 6 - 4);
+  let iconY = row2Y + 12;
+  let iconSpacing = (width - pad * 2) / 5;
+  let icons = [
+    { label: "BRK", val: resources.bricks, col: color(180, 70, 50), type: "bricks" },
+    { label: "AIR", val: resources.airTanks, col: color(100, 200, 255), type: "airTanks" },
+    { label: "MIN", val: resources.minerals, col: color(160, 160, 160), type: "minerals" },
+    { label: "H2O", val: resources.water, col: color(50, 120, 255), type: "water" },
+    { label: "SEED", val: resources.seeds, col: color(60, 180, 60), type: "seeds" },
+  ];
+  for (let i = 0; i < icons.length; i++) {
+    let ix = pad + i * iconSpacing;
+    drawDraggableIcon(ix, iconY, icons[i].label, icons[i].val, icons[i].col, icons[i].type, iconSize);
+  }
+
+  // Row 4: Irrigation button + Back button
+  let btnRow = iconY + iconSize + 22;
+  let irrW = width * 0.55;
+  let irrH = 30;
+  drawIrrigationBtn(pad, btnRow, irrW, irrH);
+
+  // Back to space button (replaces ESC on mobile)
+  let backW = width - irrW - pad * 3;
+  let backX = irrW + pad * 2;
+  fill(100, 40, 40);
+  noStroke();
+  rect(backX, btnRow, backW, irrH, 8);
+  fill(255);
+  textAlign(CENTER, CENTER);
+  textSize(11);
+  text("BACK TO SPACE", backX + backW / 2, btnRow + irrH / 2);
+
+  // Irrigation mode indicator
+  if (irrigationMode) {
+    fill(100, 200, 255, 200);
+    textAlign(CENTER);
+    textSize(9);
+    text("TAP dug tiles for pipes, TAP village to connect", width / 2, panelY - 8);
+  }
+}
+
+function drawBuyAirBtn(x, y, w, h) {
+  if (resources.spaceBucks >= 5) {
+    fill(0, 150, 200);
+  } else {
+    fill(40);
+  }
+  noStroke();
+  rect(x, y, w, h, 5);
+  fill(resources.spaceBucks >= 5 ? 255 : 80);
+  textAlign(CENTER, CENTER);
+  textSize(min(10, w * 0.13));
+  text("BUY AIR", x + w / 2, y + h / 2);
+}
+
+function drawIrrigationBtn(x, y, w, h) {
+  let hasWaterSources = false;
+  for (let i = 0; i < GRID_COLS && !hasWaterSources; i++)
+    for (let j = 0; j < GRID_ROWS && !hasWaterSources; j++)
+      if (surfaceGrid[i] && surfaceGrid[i][j] && surfaceGrid[i][j].dug && surfaceGrid[i][j].hasWater) hasWaterSources = true;
+
+  if (hasWaterSources && resources.water > 0) {
+    if (irrigationMode) {
+      fill(30, 120, 255);
+      stroke(100, 200, 255);
+      strokeWeight(2);
+    } else {
+      fill(20, 60, 140);
+      noStroke();
+    }
+    rect(x, y, w, h, 8);
+    fill(255);
+    noStroke();
+    textAlign(CENTER, CENTER);
+    textSize(min(13, w * 0.07));
+    text(irrigationMode ? "CANCEL IRRIGATION" : "BUILD IRRIGATION", x + w / 2, y + h / 2);
+  } else {
+    fill(60);
+    noStroke();
+    rect(x, y, w, h, 8);
+    fill(100);
+    textAlign(CENTER, CENTER);
+    textSize(min(11, w * 0.06));
+    text(hasWaterSources ? "Need water" : "Find water first", x + w / 2, y + h / 2);
+  }
+}
+
 function drawStatusBar(x, y, w, label, val, col) {
   fill(255);
   textSize(11);
@@ -793,8 +968,8 @@ function drawStatusBar(x, y, w, label, val, col) {
   }
 }
 
-function drawDraggableIcon(x, y, label, count, col, type) {
-  // Highlight if dragging
+function drawDraggableIcon(x, y, label, count, col, type, sz) {
+  let s = sz || 55;
   if (dragging === type) {
     stroke(255, 255, 100);
     strokeWeight(2);
@@ -802,15 +977,15 @@ function drawDraggableIcon(x, y, label, count, col, type) {
     noStroke();
   }
   fill(col);
-  rect(x, y, 55, 55, 10);
+  rect(x, y, s, s, s * 0.18);
 
   fill(255);
   noStroke();
   textAlign(CENTER);
-  textSize(18);
-  text(count, x + 27, y + 35);
-  textSize(9);
-  text(label, x + 27, y + 70);
+  textSize(s * 0.33);
+  text(count, x + s / 2, y + s * 0.64);
+  textSize(s * 0.16);
+  text(label, x + s / 2, y + s + s * 0.27);
 }
 
 // ===========================
@@ -888,23 +1063,23 @@ function drawWinScreen() {
   noStroke();
   rect(0, 0, width, height);
 
+  let m = isMobile();
   textAlign(CENTER, CENTER);
   fill(100, 255, 150);
-  textSize(42);
+  textSize(m ? 24 : 42);
   text("SOLAR SYSTEM RESTORED!", width / 2, height / 2 - 50);
 
   fill(255);
-  textSize(22);
+  textSize(m ? 16 : 22);
   text(`Final Score: ${score}`, width / 2, height / 2 + 10);
 
   fill(200);
-  textSize(16);
+  textSize(m ? 12 : 16);
   text("All planets are now habitable.", width / 2, height / 2 + 50);
-  text("A new era of interplanetary life begins.", width / 2, height / 2 + 75);
 
   fill(255, 255, 100);
-  textSize(14);
-  text("Press R to play again", width / 2, height / 2 + 120);
+  textSize(m ? 12 : 14);
+  text(m ? "Tap to play again" : "Press R to play again", width / 2, height / 2 + 90);
 }
 
 // ===========================
@@ -938,9 +1113,11 @@ function spawnParticles(x, y, col, count) {
 }
 
 function drawMessages() {
+  let L = getLayout();
   textAlign(LEFT);
-  textSize(12);
-  let y = height - 20;
+  textSize(L.mobile ? 10 : 12);
+  let msgBottom = L.mobile ? L.sidebarY - 5 : height - 20;
+  let y = msgBottom;
   for (let i = messages.length - 1; i >= 0; i--) {
     let m = messages[i];
     m.life--;
@@ -948,10 +1125,10 @@ function drawMessages() {
     fill(0, 0, 0, alpha * 0.7);
     noStroke();
     let tw = textWidth(m.text) + 20;
-    rect(15, y - 15, tw, 22, 5);
+    rect(10, y - 15, min(tw, width - 20), 22, 5);
     fill(255, 255, 255, alpha);
-    text(m.text, 25, y);
-    y -= 26;
+    text(m.text, 18, y);
+    y -= 22;
     if (m.life <= 0) messages.splice(i, 1);
   }
 }
@@ -984,14 +1161,38 @@ function handleDragRender() {
 //      INPUT HANDLING
 // ===========================
 
+function hitTest(x, y, w, h) {
+  return mouseX > x && mouseX < x + w && mouseY > y && mouseY < y + h;
+}
+
+// Touch support for mobile
+function touchStarted() {
+  // p5.js sets mouseX/mouseY from touch automatically
+  mousePressed();
+  return false; // prevent default (scrolling)
+}
+
+function touchEnded() {
+  mouseReleased();
+  return false;
+}
+
+function touchMoved() {
+  return false; // prevent scrolling while dragging
+}
+
 function mousePressed() {
-  if (gameState === "WIN") return;
+  if (gameState === "WIN") {
+    if (isMobile()) resetGame();
+    return;
+  }
 
   if (gameState === "SPACE") {
     // Click planet to land
     for (let i = 0; i < planets.length; i++) {
       let p = planets[i];
-      if (dist(mouseX, mouseY, p.screenX, p.screenY) < p.radius + 12) {
+      let hitPad = isMobile() ? 24 : 12;
+      if (dist(mouseX, mouseY, p.screenX, p.screenY) < p.radius + hitPad) {
         if (p.hab >= 100) {
           addMessage(`${p.name} is already fully habitable!`);
           return;
@@ -1003,74 +1204,127 @@ function mousePressed() {
       }
     }
   } else if (gameState === "SURFACE") {
-    let sx = width - 255;
+    let L = getLayout();
+    let sx = L.sidebarX;
+    let pad = 8;
 
-    // Check Buy Air button click
-    let buyBtnX = sx + 140;
-    let buyBtnY = 173;
-    let buyBtnW = 100;
-    let buyBtnH = 22;
-    if (mouseX > buyBtnX && mouseX < buyBtnX + buyBtnW && mouseY > buyBtnY && mouseY < buyBtnY + buyBtnH) {
-      if (resources.spaceBucks >= 5) {
-        resources.spaceBucks -= 5;
-        airSupply = min(airSupply + 25, 100);
-        addMessage("Bought air supply! -5 Space Bucks, +25 air");
-        spawnParticles(mouseX, mouseY, [255, 220, 50], 8);
-      } else {
-        addMessage("Not enough Space Bucks! Build houses (10 bricks each).");
+    if (L.mobile) {
+      // --- MOBILE HIT DETECTION ---
+      let panelY = L.sidebarY;
+      let panelH = L.sidebarH;
+      let barY = panelY + 16;
+      let row2Y = barY + 30;
+
+      // Buy Air button
+      let buyW = 70, buyH = 20;
+      let buyX = width - buyW - pad;
+      let buyY = row2Y - 12;
+      if (hitTest(buyX, buyY, buyW, buyH)) {
+        if (resources.spaceBucks >= 5) {
+          resources.spaceBucks -= 5;
+          airSupply = min(airSupply + 25, 100);
+          addMessage("Bought air! -5 Space Bucks, +25 air");
+          spawnParticles(mouseX, mouseY, [255, 220, 50], 8);
+        } else {
+          addMessage("Not enough Space Bucks!");
+        }
+        return;
       }
-      return;
+
+      // Resource icons (horizontal strip)
+      let iconSize = min(42, (width - pad * 2) / 6 - 4);
+      let iconY = row2Y + 12;
+      let iconSpacing = (width - pad * 2) / 5;
+      let iconTypes = ["bricks", "airTanks", "minerals", "water", "seeds"];
+      if (!irrigationMode) {
+        for (let i = 0; i < iconTypes.length; i++) {
+          let ix = pad + i * iconSpacing;
+          if (hitTest(ix, iconY, iconSize, iconSize)) {
+            if (resources[iconTypes[i]] > 0) dragging = iconTypes[i];
+            return;
+          }
+        }
+      }
+
+      // Irrigation button
+      let btnRow = iconY + iconSize + 22;
+      let irrW = width * 0.55;
+      let irrH = 30;
+      if (hitTest(pad, btnRow, irrW, irrH)) {
+        let hasWS = false;
+        for (let i = 0; i < GRID_COLS && !hasWS; i++)
+          for (let j = 0; j < GRID_ROWS && !hasWS; j++)
+            if (surfaceGrid[i] && surfaceGrid[i][j] && surfaceGrid[i][j].dug && surfaceGrid[i][j].hasWater) hasWS = true;
+        if (hasWS && resources.water > 0) {
+          irrigationMode = !irrigationMode;
+          addMessage(irrigationMode ? "Irrigation ON — tap tiles!" : "Irrigation OFF.");
+        }
+        return;
+      }
+
+      // Back to space button
+      let backW = width - irrW - pad * 3;
+      let backX = irrW + pad * 2;
+      if (hitTest(backX, btnRow, backW, irrH)) {
+        gameState = "SPACE";
+        irrigationMode = false;
+        addMessage("Returned to orbit.");
+        return;
+      }
+
+    } else {
+      // --- DESKTOP HIT DETECTION ---
+      // Buy Air button
+      let buyBtnX = sx + 140;
+      let buyBtnY = 173;
+      let buyBtnW = 100;
+      let buyBtnH = 22;
+      if (hitTest(buyBtnX, buyBtnY, buyBtnW, buyBtnH)) {
+        if (resources.spaceBucks >= 5) {
+          resources.spaceBucks -= 5;
+          airSupply = min(airSupply + 25, 100);
+          addMessage("Bought air supply! -5 Space Bucks, +25 air");
+          spawnParticles(mouseX, mouseY, [255, 220, 50], 8);
+        } else {
+          addMessage("Not enough Space Bucks! Build houses (10 bricks each).");
+        }
+        return;
+      }
+
+      // Irrigation button
+      let irrBtnY = 450;
+      let irrBtnW = 225;
+      let irrBtnH = 40;
+      if (hitTest(sx + 15, irrBtnY, irrBtnW, irrBtnH)) {
+        let hasWS = false;
+        for (let i = 0; i < GRID_COLS && !hasWS; i++)
+          for (let j = 0; j < GRID_ROWS && !hasWS; j++)
+            if (surfaceGrid[i] && surfaceGrid[i][j] && surfaceGrid[i][j].dug && surfaceGrid[i][j].hasWater) hasWS = true;
+        if (hasWS && resources.water > 0) {
+          irrigationMode = !irrigationMode;
+          if (irrigationMode) addMessage("Irrigation mode ON — click dug tiles to lay pipes toward a village!");
+          else addMessage("Irrigation mode OFF.");
+          return;
+        }
+      }
+
+      // Draggable icons
+      if (!irrigationMode) {
+        let iconX = sx + 30;
+        if (hitTest(iconX, 195, 55, 55)) { if (resources.bricks > 0) dragging = "bricks"; return; }
+        if (hitTest(iconX, 280, 55, 55)) { if (resources.airTanks > 0) dragging = "airTanks"; return; }
+        if (hitTest(iconX + 110, 195, 55, 55)) { if (resources.minerals > 0) dragging = "minerals"; return; }
+        if (hitTest(iconX + 110, 280, 55, 55)) { if (resources.water > 0) dragging = "water"; return; }
+        if (hitTest(iconX, 365, 55, 55)) { if (resources.seeds > 0) dragging = "seeds"; return; }
+      }
     }
 
-    // Check irrigation button click
-    let irrBtnY = 450;
-    let irrBtnW = 225;
-    let irrBtnH = 40;
-    if (mouseX > sx + 15 && mouseX < sx + 15 + irrBtnW && mouseY > irrBtnY && mouseY < irrBtnY + irrBtnH) {
-      // Check if water sources exist and player has water
-      let hasWS = false;
-      for (let i = 0; i < GRID_COLS && !hasWS; i++)
-        for (let j = 0; j < GRID_ROWS && !hasWS; j++)
-          if (surfaceGrid[i] && surfaceGrid[i][j] && surfaceGrid[i][j].dug && surfaceGrid[i][j].hasWater) hasWS = true;
-      if (hasWS && resources.water > 0) {
-        irrigationMode = !irrigationMode;
-        if (irrigationMode) addMessage("Irrigation mode ON — click dug tiles to lay pipes toward a village!");
-        else addMessage("Irrigation mode OFF.");
-        return;
-      }
-    }
-
-    // Check if clicking draggable icons (not in irrigation mode)
-    if (!irrigationMode) {
-      let iconX = sx + 30;
-      if (mouseX > iconX && mouseX < iconX + 55 && mouseY > 195 && mouseY < 250) {
-        if (resources.bricks > 0) dragging = "bricks";
-        return;
-      }
-      if (mouseX > iconX && mouseX < iconX + 55 && mouseY > 280 && mouseY < 335) {
-        if (resources.airTanks > 0) dragging = "airTanks";
-        return;
-      }
-      if (mouseX > iconX + 110 && mouseX < iconX + 165 && mouseY > 195 && mouseY < 250) {
-        if (resources.minerals > 0) dragging = "minerals";
-        return;
-      }
-      if (mouseX > iconX + 110 && mouseX < iconX + 165 && mouseY > 280 && mouseY < 335) {
-        if (resources.water > 0) dragging = "water";
-        return;
-      }
-      if (mouseX > iconX && mouseX < iconX + 55 && mouseY > 365 && mouseY < 420) {
-        if (resources.seeds > 0) dragging = "seeds";
-        return;
-      }
-    }
-
-    // Grid interactions
+    // Grid interactions (same for both layouts)
     let p = planets[currentPIdx];
-    let cellSize = min((width - 280) / GRID_COLS, (height - 160) / GRID_ROWS);
+    let cellSize = L.cellSize;
     let gridW = cellSize * GRID_COLS;
-    let gridOx = (width - 260 - gridW) / 2;
-    let gridOy = 90;
+    let gridOx = L.mobile ? (width - gridW) / 2 : (width - 260 - gridW) / 2;
+    let gridOy = L.gridOy;
 
     let gi = floor((mouseX - gridOx) / cellSize);
     let gj = floor((mouseY - gridOy) / cellSize);
@@ -1177,11 +1431,12 @@ function mousePressed() {
 
 function mouseReleased() {
   if (dragging && gameState === "SURFACE") {
+    let L = getLayout();
     let p = planets[currentPIdx];
-    let cellSize = min((width - 280) / GRID_COLS, (height - 160) / GRID_ROWS);
+    let cellSize = L.cellSize;
     let gridW = cellSize * GRID_COLS;
-    let gridOx = (width - 260 - gridW) / 2;
-    let gridOy = 90;
+    let gridOx = L.mobile ? (width - gridW) / 2 : (width - 260 - gridW) / 2;
+    let gridOy = L.gridOy;
 
     let gi = floor((mouseX - gridOx) / cellSize);
     let gj = floor((mouseY - gridOy) / cellSize);
@@ -1282,18 +1537,21 @@ function keyPressed() {
     addMessage("Returned to orbit.");
   }
   if ((key === "r" || key === "R") && gameState === "WIN") {
-    // Full reset
-    score = 0;
-    planetsRestored = 1;
-    airSupply = 100;
-    resources = { bricks: 5, airTanks: 3, minerals: 0, water: 0, spaceBucks: 0, seeds: 2 };
-    messages = [];
-    for (let p of planets) {
-      p.hab = p.name === "Earth" ? 100 : 0;
-    }
-    currentPIdx = 2;
-    gameState = "SPACE";
+    resetGame();
   }
+}
+
+function resetGame() {
+  score = 0;
+  planetsRestored = 1;
+  airSupply = 100;
+  resources = { bricks: 5, airTanks: 3, minerals: 0, water: 0, spaceBucks: 0, seeds: 2 };
+  messages = [];
+  for (let p of planets) {
+    p.hab = p.name === "Earth" ? 100 : 0;
+  }
+  currentPIdx = 2;
+  gameState = "SPACE";
 }
 
 // ===========================
@@ -1379,6 +1637,7 @@ function findNextUnrestored() {
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
+  mobile = isMobile();
   sun.x = width / 2;
   sun.y = height / 2;
   // Rescale orbits
