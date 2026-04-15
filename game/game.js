@@ -215,6 +215,24 @@ function draw() {
 //       INTRO SCREEN
 // ===========================
 
+// Wraps text to fit within maxW pixels, returns array of lines
+function wrapText(txt, maxW) {
+  let words = txt.split(" ");
+  let lines = [];
+  let line = "";
+  for (let w of words) {
+    let test = line ? line + " " + w : w;
+    if (textWidth(test) > maxW && line) {
+      lines.push(line);
+      line = w;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
 function drawIntroScreen() {
   let m = isMobile();
   let cx = width / 2;
@@ -237,62 +255,77 @@ function drawIntroScreen() {
   text("ASTRA-REFORM", cx, cy * 0.55);
 
   fill(150, 220, 255);
-  textSize(m ? 14 : 22);
+  textSize(m ? 16 : 22);
   text("The Solar Restoration", cx, cy * 0.55 + (m ? 30 : 45));
 
   // How to play steps
-  let startY = cy * (m ? 0.85 : 0.82);
-  let lineH = m ? 26 : 34;
-  textSize(m ? 13 : 18);
-  fill(255, 255, 255, 220);
+  let stepFontSize = m ? 14 : 16;
+  let numFontSize = m ? 15 : 18;
+  let lineSpacing = m ? 18 : 22;
+  let maxTextW = m ? width - 80 : 400;
+  let numX = m ? 30 : cx - 200;
+  let textX = m ? 50 : cx - 185;
 
   let steps = [
     ["1.", "Tap a PLANET to land on it", [255, 200, 100]],
     ["2.", "Tap ground tiles to DIG for resources", [180, 140, 100]],
-    ["3.", "Drag BRICKS to purple villages (10 = house!)", [180, 70, 50]],
-    ["4.", "Drag SEEDS to dug dirt to grow plants", [60, 200, 60]],
+    ["3.", "Drag BRICKS to purple villages (10 bricks = a house!)", [180, 70, 50]],
+    ["4.", "Drag SEEDS onto dug dirt to grow plants", [60, 200, 60]],
     ["5.", "Build IRRIGATION pipes from water to villages", [50, 120, 255]],
     ["6.", "Reach 100% habitability to restore a planet!", [100, 255, 100]],
   ];
 
+  let curY = cy * (m ? 0.78 : 0.82);
   for (let i = 0; i < steps.length; i++) {
-    let y = startY + i * lineH;
+    // Number
     fill(steps[i][2][0], steps[i][2][1], steps[i][2][2]);
     textAlign(RIGHT);
-    text(steps[i][0], cx - (m ? 130 : 200), y);
+    textSize(numFontSize);
+    text(steps[i][0], numX, curY);
+
+    // Wrapped body text
     fill(240);
     textAlign(LEFT);
-    textSize(m ? 14 : 16);
-    text(steps[i][1], cx - (m ? 118 : 185), y);
-    textSize(m ? 15 : 18);
+    textSize(stepFontSize);
+    let lines = wrapText(steps[i][1], maxTextW);
+    for (let ln of lines) {
+      text(ln, textX, curY);
+      curY += lineSpacing;
+    }
+    curY += m ? 4 : 8; // gap between steps
   }
 
   // Air warning box
-  let tipY = startY + steps.length * lineH + (m ? 15 : 25);
+  let tipY = curY + (m ? 5 : 10);
+  let boxW = m ? width - 30 : 440;
+  let boxH = m ? 55 : 55;
   fill(200, 50, 50, 60);
   noStroke();
-  rect(cx - (m ? 160 : 220), tipY - 15, m ? 320 : 440, m ? 50 : 55, 8);
+  rect(cx - boxW / 2, tipY - 10, boxW, boxH, 8);
 
   fill(255, 100, 100);
   textAlign(CENTER);
   textSize(m ? 14 : 16);
-  text("YOUR AIR IS ALWAYS DRAINING!", cx, tipY);
+  text("YOUR AIR IS ALWAYS DRAINING!", cx, tipY + 5);
   fill(200, 200, 150);
   textSize(m ? 12 : 14);
-  text("Higher gravity = faster drain. Use Air Tanks and Space Bucks to refill!", cx, tipY + (m ? 18 : 22));
+  let airLines = wrapText("Higher gravity = faster drain. Use Air Tanks and Space Bucks to refill!", boxW - 20);
+  for (let j = 0; j < airLines.length; j++) {
+    text(airLines[j], cx, tipY + 22 + j * (m ? 16 : 18));
+  }
 
   // Start button
-  let btnW = m ? 200 : 280;
-  let btnH = m ? 45 : 55;
+  let btnW = m ? width * 0.6 : 280;
+  let btnH = m ? 50 : 55;
   let btnX = cx - btnW / 2;
-  let btnY = height - (m ? 70 : 100);
+  let btnY = height - (m ? 65 : 100);
   let hover = mouseX > btnX && mouseX < btnX + btnW && mouseY > btnY && mouseY < btnY + btnH;
 
   fill(hover ? color(80, 200, 120) : color(50, 160, 90));
   noStroke();
   rect(btnX, btnY, btnW, btnH, 12);
   fill(255);
-  textSize(m ? 18 : 24);
+  textSize(m ? 20 : 24);
   text("START MISSION", cx, btnY + btnH / 2);
 }
 
@@ -1311,10 +1344,10 @@ function touchMoved() {
 function mousePressed() {
   if (gameState === "INTRO") {
     let m = isMobile();
-    let btnW = m ? 200 : 280;
-    let btnH = m ? 45 : 55;
+    let btnW = m ? width * 0.6 : 280;
+    let btnH = m ? 50 : 55;
     let btnX = width / 2 - btnW / 2;
-    let btnY = height - (m ? 70 : 100);
+    let btnY = height - (m ? 65 : 100);
     if (hitTest(btnX, btnY, btnW, btnH)) {
       gameState = "SPACE";
       addMessage("Click any planet to begin terraforming!", 300);
