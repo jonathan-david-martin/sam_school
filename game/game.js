@@ -18,12 +18,40 @@ const PLANET_DATA = [
 ];
 
 // === GAME STATE ===
-let gameState = "SPACE"; // SPACE, LANDING, SURFACE, WIN
+let gameState = "INTRO"; // INTRO, SPACE, LANDING, SURFACE, WIN
 let planets = [];
 let sun;
 let stars = [];
 let currentPIdx = 2; // Start focused on Earth
 let selectedPIdx = -1;
+
+// Milestone tracking for first-time feedback
+let milestones = {
+  firstDig: false,
+  firstWater: false,
+  firstMineral: false,
+  firstSeed: false,
+  firstBrickDrop: false,
+  firstHouse: false,
+  firstPlant: false,
+  firstIrrigation: false,
+  firstPlanetRestored: false,
+  firstAirBuy: false,
+};
+
+// Text scale — everything bigger
+function T(size) {
+  let scale = isMobile() ? 1.25 : 1.4;
+  return size * scale;
+}
+
+// Milestone feedback — shows an encouraging message on first-time actions
+function milestone(key, msg) {
+  if (!milestones[key]) {
+    milestones[key] = true;
+    addMessage(msg, 360); // longer duration so they can read it
+  }
+}
 
 // Player / Survival
 let airSupply = 100;
@@ -139,7 +167,10 @@ function setup() {
 function draw() {
   background(5, 5, 15);
 
-  if (gameState === "SPACE") {
+  if (gameState === "INTRO") {
+    drawStars();
+    drawIntroScreen();
+  } else if (gameState === "SPACE") {
     drawStars();
     drawSpaceView();
     drawSpaceUI();
@@ -178,6 +209,83 @@ function draw() {
   drawMessages();
   drawParticles();
   handleDragRender();
+}
+
+// ===========================
+//       INTRO SCREEN
+// ===========================
+
+function drawIntroScreen() {
+  let m = isMobile();
+  let cx = width / 2;
+  let cy = height / 2;
+
+  // Animated sun glow in background
+  let pulse = sin(frameCount * 0.02) * 10;
+  for (let i = 4; i > 0; i--) {
+    fill(255, 200, 50, 15);
+    noStroke();
+    circle(cx, cy * 0.3, 60 + i * 25 + pulse);
+  }
+  fill(255, 220, 50);
+  circle(cx, cy * 0.3, 50);
+
+  // Title
+  fill(255);
+  textAlign(CENTER, CENTER);
+  textSize(m ? 28 : 48);
+  text("ASTRA-REFORM", cx, cy * 0.55);
+
+  fill(150, 220, 255);
+  textSize(m ? 14 : 22);
+  text("The Solar Restoration", cx, cy * 0.55 + (m ? 30 : 45));
+
+  // How to play steps
+  let startY = cy * (m ? 0.85 : 0.82);
+  let lineH = m ? 26 : 34;
+  textSize(m ? 13 : 18);
+  fill(255, 255, 255, 220);
+
+  let steps = [
+    ["1.", "Click a planet to land on it", [255, 200, 100]],
+    ["2.", "Tap tiles to DIG for water, minerals & seeds", [180, 140, 100]],
+    ["3.", "Drag bricks to villages -- 10 bricks = a HOUSE (+5 Space Bucks!)", [180, 70, 50]],
+    ["4.", "Drag seeds to dirt to grow vegetation", [60, 200, 60]],
+    ["5.", "Build irrigation pipes from water to villages", [50, 120, 255]],
+    ["6.", "Get each planet to 100% habitability to restore it!", [100, 255, 100]],
+  ];
+
+  for (let i = 0; i < steps.length; i++) {
+    let y = startY + i * lineH;
+    fill(steps[i][2][0], steps[i][2][1], steps[i][2][2]);
+    textAlign(RIGHT);
+    text(steps[i][0], cx - (m ? 120 : 200), y);
+    fill(230);
+    textAlign(LEFT);
+    textSize(m ? 12 : 16);
+    text(steps[i][1], cx - (m ? 110 : 185), y);
+    textSize(m ? 13 : 18);
+  }
+
+  // Tip
+  fill(200, 200, 100);
+  textAlign(CENTER);
+  textSize(m ? 11 : 15);
+  text("Watch your air supply! Higher gravity = faster drain.", cx, startY + steps.length * lineH + (m ? 20 : 30));
+
+  // Start button
+  let btnW = m ? 200 : 280;
+  let btnH = m ? 45 : 55;
+  let btnX = cx - btnW / 2;
+  let btnY = height - (m ? 70 : 100);
+  let hover = mouseX > btnX && mouseX < btnX + btnW && mouseY > btnY && mouseY < btnY + btnH;
+
+  fill(hover ? color(80, 200, 120) : color(50, 160, 90));
+  noStroke();
+  rect(btnX, btnY, btnW, btnH, 12);
+  fill(255);
+  textSize(m ? 18 : 24);
+  text("START MISSION", cx, btnY + btnH / 2);
 }
 
 // ===========================
@@ -267,13 +375,13 @@ function drawSpaceView() {
     fill(255, 255, 255, 180);
     noStroke();
     textAlign(CENTER);
-    textSize(10);
-    text(p.name, p.x, p.y + p.radius + 14);
+    textSize(T(10));
+    text(p.name, p.x, p.y + p.radius + 18);
 
     // Checkmark
     if (p.hab >= 100) {
       fill(100, 255, 100);
-      textSize(13);
+      textSize(T(13));
       text("✓", p.x + p.radius + 8, p.y - p.radius + 4);
     }
 
@@ -297,14 +405,14 @@ function drawSpaceUI() {
 
   fill(255);
   textAlign(LEFT, CENTER);
-  textSize(m ? 11 : 14);
+  textSize(m ? 14 : 18);
   let topY = m ? 17 : 25;
   text(`SCORE: ${score}`, 10, topY);
-  text(`${planetsRestored}/${planets.length}`, m ? 120 : 160, topY);
+  text(`${planetsRestored}/${planets.length}`, m ? 130 : 180, topY);
 
   if (!m) {
     textAlign(CENTER, CENTER);
-    textSize(13);
+    textSize(16);
     fill(200);
     text("ASTRA-REFORM: THE SOLAR RESTORATION", width / 2, 25);
   }
@@ -339,7 +447,7 @@ function drawSpaceUI() {
     noStroke();
     rect(sideX - 10, sideY - 10, 205, planets.length * 30 + 25, 8);
 
-    textSize(11);
+    textSize(14);
     textAlign(LEFT);
     fill(180);
     text("PLANET STATUS", sideX, sideY + 2);
@@ -353,7 +461,7 @@ function drawSpaceUI() {
       circle(sideX + 6, y + 6, 10);
 
       fill(255);
-      textSize(10);
+      textSize(13);
       text(p.name, sideX + 18, y + 10);
 
       let barX = sideX + 85;
@@ -380,7 +488,7 @@ function drawSpaceUI() {
   // Bottom hint
   fill(255, 255, 255, 120);
   textAlign(CENTER);
-  textSize(m ? 10 : 12);
+  textSize(m ? 13 : 16);
   text(m ? "Tap a planet to land" : "Click a planet to land on its surface and begin terraforming", width / 2, m ? height - 38 : height - 25);
 
   // Resource display
@@ -410,7 +518,7 @@ function drawResourcePanel(x, y) {
       noStroke();
       rect(ix + 2, y, 8, 8, 2);
       fill(255);
-      textSize(8);
+      textSize(10);
       textAlign(LEFT);
       text(`${items[i].val}`, ix + 13, y + 8);
     }
@@ -421,7 +529,7 @@ function drawResourcePanel(x, y) {
 
     fill(180);
     textAlign(LEFT);
-    textSize(11);
+    textSize(14);
     text("RESOURCES", x + 5, y + 3);
 
     for (let i = 0; i < items.length; i++) {
@@ -430,7 +538,7 @@ function drawResourcePanel(x, y) {
       noStroke();
       rect(x + 5, iy, 14, 14, 3);
       fill(255);
-      textSize(11);
+      textSize(14);
       text(`${items[i].label}: ${items[i].val}`, x + 25, iy + 11);
     }
   }
@@ -465,10 +573,10 @@ function drawLandingAnimation() {
   // Text
   fill(255, 255 * (1 - t * 0.5));
   textAlign(CENTER, CENTER);
-  textSize(20);
+  textSize(T(20));
   text(`Landing on ${p.name}...`, width / 2, height / 2 - sz / 2 - 40);
 
-  textSize(13);
+  textSize(T(13));
   fill(200, 200 * (1 - t * 0.5));
   text(`Gravity: ${p.gravity} m/s²  |  Diameter: ${p.diameterKm.toLocaleString()} km (${Math.round(p.diameterKm * 0.621371).toLocaleString()} mi)`, width / 2, height / 2 + sz / 2 + 30);
 
@@ -479,6 +587,9 @@ function drawLandingAnimation() {
     let weightHere = (playerWeight * p.gravity / 9.81).toFixed(1);
     addMessage(`Your weight on ${p.name}: ${weightHere} kg (gravity: ${p.gravity} m/s²)`);
     addMessage(`Diameter: ${p.diameterKm.toLocaleString()} km = ${Math.round(p.diameterKm * 0.621371).toLocaleString()} miles`);
+    if (!milestones.firstDig) {
+      addMessage("Click/tap the ground tiles to start digging for resources!", 360);
+    }
   }
 }
 
@@ -518,7 +629,7 @@ function drawSurfaceView() {
   rect(0, 0, skyW, headerH);
   fill(255);
   textAlign(CENTER, CENTER);
-  textSize(L.mobile ? 12 : 16);
+  textSize(L.mobile ? 15 : 20);
   text(`${p.name} — SURFACE`, skyW / 2, headerH / 2);
 
   // Science info bar
@@ -526,13 +637,13 @@ function drawSurfaceView() {
     fill(0, 0, 0, 100);
     rect(0, 50, skyW, 35);
     fill(200);
-    textSize(11);
+    textSize(14);
     text(`Gravity: ${p.gravity} m/s²  |  Diameter: ${p.diameterKm.toLocaleString()} km (${Math.round(p.diameterKm * 0.621371).toLocaleString()} mi)  |  Your weight: ${(playerWeight * p.gravity / 9.81).toFixed(1)} kg`, skyW / 2, 67);
   } else {
     fill(0, 0, 0, 100);
     rect(0, headerH, skyW, 22);
     fill(200);
-    textSize(9);
+    textSize(11);
     text(`G: ${p.gravity} m/s²  |  D: ${p.diameterKm.toLocaleString()} km  |  Wt: ${(playerWeight * p.gravity / 9.81).toFixed(1)} kg`, skyW / 2, headerH + 11);
   }
 
@@ -712,7 +823,7 @@ function drawSurfaceView() {
   if (!L.mobile) {
     fill(255, 150);
     textAlign(LEFT);
-    textSize(10);
+    textSize(13);
     let ly = oy + gridH + 15;
     let legendText = "Click tiles to dig  |  Drag resources onto villages  |  ESC = return to space";
     if (irrigationMode) {
@@ -742,18 +853,18 @@ function drawSurfaceUIDesktop(L, p) {
 
   fill(255);
   textAlign(LEFT);
-  textSize(14);
+  textSize(18);
   text("MISSION CONTROL", sx + 15, 35);
 
   drawStatusBar(sx + 15, 60, 225, "AIR SUPPLY", airSupply, color(0, 180, 255));
   drawStatusBar(sx + 15, 110, 225, `${p.name} HABITABILITY`, p.hab, color(0, 255, 100));
 
   fill(200);
-  textSize(11);
+  textSize(14);
   text(`Score: ${score}  |  Restored: ${planetsRestored}/${planets.length}`, sx + 15, 165);
 
   fill(255, 220, 50);
-  textSize(12);
+  textSize(15);
   textAlign(LEFT);
   text(`Space Bucks: ${resources.spaceBucks}`, sx + 15, 185);
 
@@ -774,7 +885,7 @@ function drawSurfaceUIDesktop(L, p) {
 
   // Instructions
   fill(150);
-  textSize(10);
+  textSize(13);
   textAlign(LEFT);
   let iy = 510;
   let instructions = [
@@ -842,7 +953,7 @@ function drawSurfaceUIMobile(L, p) {
   // Row 2: Score, Space Bucks, Buy Air btn
   let row2Y = barY + 30;
   fill(200);
-  textSize(10);
+  textSize(13);
   textAlign(LEFT);
   text(`Score: ${score} | ${planetsRestored}/${planets.length}`, col1, row2Y);
   fill(255, 220, 50);
@@ -884,14 +995,14 @@ function drawSurfaceUIMobile(L, p) {
   rect(backX, btnRow, backW, irrH, 8);
   fill(255);
   textAlign(CENTER, CENTER);
-  textSize(11);
+  textSize(13);
   text("BACK TO SPACE", backX + backW / 2, btnRow + irrH / 2);
 
   // Irrigation mode indicator
   if (irrigationMode) {
     fill(100, 200, 255, 200);
     textAlign(CENTER);
-    textSize(9);
+    textSize(11);
     text("TAP dug tiles for pipes, TAP village to connect", width / 2, panelY - 8);
   }
 }
@@ -906,7 +1017,7 @@ function drawBuyAirBtn(x, y, w, h) {
   rect(x, y, w, h, 5);
   fill(resources.spaceBucks >= 5 ? 255 : 80);
   textAlign(CENTER, CENTER);
-  textSize(min(10, w * 0.13));
+  textSize(min(13, w * 0.16));
   text("BUY AIR", x + w / 2, y + h / 2);
 }
 
@@ -929,7 +1040,7 @@ function drawIrrigationBtn(x, y, w, h) {
     fill(255);
     noStroke();
     textAlign(CENTER, CENTER);
-    textSize(min(13, w * 0.07));
+    textSize(min(15, w * 0.08));
     text(irrigationMode ? "CANCEL IRRIGATION" : "BUILD IRRIGATION", x + w / 2, y + h / 2);
   } else {
     fill(60);
@@ -937,14 +1048,14 @@ function drawIrrigationBtn(x, y, w, h) {
     rect(x, y, w, h, 8);
     fill(100);
     textAlign(CENTER, CENTER);
-    textSize(min(11, w * 0.06));
+    textSize(min(13, w * 0.07));
     text(hasWaterSources ? "Need water" : "Find water first", x + w / 2, y + h / 2);
   }
 }
 
 function drawStatusBar(x, y, w, label, val, col) {
   fill(255);
-  textSize(11);
+  textSize(T(11));
   textAlign(LEFT);
   text(label, x, y - 3);
 
@@ -1115,7 +1226,7 @@ function spawnParticles(x, y, col, count) {
 function drawMessages() {
   let L = getLayout();
   textAlign(LEFT);
-  textSize(L.mobile ? 10 : 12);
+  textSize(L.mobile ? 13 : 15);
   let msgBottom = L.mobile ? L.sidebarY - 5 : height - 20;
   let y = msgBottom;
   for (let i = messages.length - 1; i >= 0; i--) {
@@ -1182,6 +1293,19 @@ function touchMoved() {
 }
 
 function mousePressed() {
+  if (gameState === "INTRO") {
+    let m = isMobile();
+    let btnW = m ? 200 : 280;
+    let btnH = m ? 45 : 55;
+    let btnX = width / 2 - btnW / 2;
+    let btnY = height - (m ? 70 : 100);
+    if (hitTest(btnX, btnY, btnW, btnH)) {
+      gameState = "SPACE";
+      addMessage("Click any planet to begin terraforming!", 300);
+    }
+    return;
+  }
+
   if (gameState === "WIN") {
     if (isMobile()) resetGame();
     return;
@@ -1224,6 +1348,7 @@ function mousePressed() {
           resources.spaceBucks -= 5;
           airSupply = min(airSupply + 25, 100);
           addMessage("Bought air! -5 Space Bucks, +25 air");
+          milestone("firstAirBuy", "Smart! Spend Space Bucks to stay alive longer on tough planets.");
           spawnParticles(mouseX, mouseY, [255, 220, 50], 8);
         } else {
           addMessage("Not enough Space Bucks!");
@@ -1356,12 +1481,14 @@ function mousePressed() {
             score += 150 + gravityBonus;
             spawnParticles(mouseX, mouseY, [30, 120, 255], 15);
             addMessage(`Irrigation connected! +20 hab, +15 air (+${150 + gravityBonus} pts)`);
+            milestone("firstIrrigation", "Amazing! Irrigation gives huge bonuses. Connect more water to villages!");
             irrigationConnections.push({ col: gi, row: gj });
 
             if (p.hab >= 100) {
               planetsRestored++;
               score += 500;
               addMessage(`${p.name} RESTORED! +500 bonus!`);
+          milestone("firstPlanetRestored", "You restored your first planet! Head to the next one and keep going!");
               spawnParticles(mouseX, mouseY, [100, 255, 100], 25);
               irrigationMode = false;
               if (planetsRestored >= planets.length) {
@@ -1401,22 +1528,26 @@ function mousePressed() {
         if (!cell.dug && !cell.hasVillage) {
           cell.dug = true;
           spawnParticles(mouseX, mouseY, p.color, 6);
+          milestone("firstDig", "Nice! You dug your first tile! Keep digging to find resources.");
           let foundSomething = false;
 
           if (cell.hasWater) {
             resources.water++;
             resources.airTanks++;
             addMessage("Found water! +1 water, +1 air tank");
+            milestone("firstWater", "Water found! Drag it to a village for air, or build irrigation pipes!");
             foundSomething = true;
           }
           if (cell.hasMineral) {
             resources.minerals++;
             addMessage("Found minerals! +1 mineral");
+            milestone("firstMineral", "Minerals! Drag them to a village to turn them into bricks.");
             foundSomething = true;
           }
           if (cell.hasSeed) {
             resources.seeds++;
             addMessage("Found seeds! +1 seed");
+            milestone("firstSeed", "Seeds! Drag them onto any dug dirt tile to plant vegetation (+5 hab).");
             spawnParticles(mouseX, mouseY, [60, 180, 60], 5);
             foundSomething = true;
           }
@@ -1453,11 +1584,13 @@ function mouseReleased() {
           score += 30;
           spawnParticles(mouseX, mouseY, [60, 200, 60], 10);
           addMessage("+5 habitability! Vegetation planted!");
+          milestone("firstPlant", "You grew your first plant! Each one adds +5 to habitability.");
 
           if (p.hab >= 100) {
             planetsRestored++;
             score += 500;
             addMessage(`${p.name} RESTORED! +500 bonus!`);
+          milestone("firstPlanetRestored", "You restored your first planet! Head to the next one and keep going!");
             spawnParticles(mouseX, mouseY, [100, 255, 100], 25);
             if (planetsRestored >= planets.length) {
               gameState = "WIN";
@@ -1485,23 +1618,26 @@ function mouseReleased() {
         p.hab = min(p.hab + 1, 100);
         spawnParticles(mouseX, mouseY, [180, 70, 50], 4);
         addMessage(`Brick placed! (${cell.bricksDeposited}/10 toward a house)`);
+        milestone("firstBrickDrop", "You placed a brick on a village! Drop 10 total to build a house.");
 
         // Every 10 bricks builds a house
         if (cell.bricksDeposited >= 10) {
           cell.bricksDeposited = 0;
           cell.houses++;
           resources.spaceBucks += 5;
-          p.hab = min(p.hab + 9, 100); // +9 more (total +10 for the 10 bricks)
+          p.hab = min(p.hab + 9, 100);
           let gravityBonus = Math.round(abs(p.gravity - 9.81) * 15);
           score += 200 + gravityBonus;
           spawnParticles(mouseX, mouseY, [255, 220, 50], 20);
           addMessage(`HOUSE BUILT! +5 Space Bucks! (+${200 + gravityBonus} pts)`);
+          milestone("firstHouse", "Your first house! Use Space Bucks to buy air with the BUY AIR button.");
         }
 
         if (p.hab >= 100) {
           planetsRestored++;
           score += 500;
           addMessage(`${p.name} RESTORED! +500 bonus!`);
+          milestone("firstPlanetRestored", "You restored your first planet! Head to the next one and keep going!");
           spawnParticles(mouseX, mouseY, [100, 255, 100], 25);
           if (planetsRestored >= planets.length) {
             gameState = "WIN";
@@ -1550,8 +1686,9 @@ function resetGame() {
   for (let p of planets) {
     p.hab = p.name === "Earth" ? 100 : 0;
   }
+  for (let k in milestones) milestones[k] = false;
   currentPIdx = 2;
-  gameState = "SPACE";
+  gameState = "INTRO";
 }
 
 // ===========================
