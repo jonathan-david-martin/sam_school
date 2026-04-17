@@ -2,3 +2,5 @@
 *.tmp
 .DS_Store
 Thumbs.db
+.firebase/
+firebase_login.ps1
