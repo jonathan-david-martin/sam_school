@@ -38,6 +38,7 @@ let selectedPIdx = -1;
 
 // Player identity
 let playerInitials = "";
+let initialsLength = 3; // 2 or 3
 let initialsInput = ["_", "_", "_"];
 let initialsPos = 0;
 
@@ -83,7 +84,7 @@ let airSupply = 100;
 let playerWeight = 70; // kg on Earth
 
 // Resources
-let resources = { bricks: 5, airTanks: 3, minerals: 0, water: 0, spaceBucks: 0, seeds: 2 };
+let resources = { bricks: 10, airTanks: 3, minerals: 0, water: 0, spaceBucks: 0, seeds: 10 };
 let dragging = null;
 
 // Surface grid
@@ -311,14 +312,35 @@ function drawNameScreen() {
   textSize(m ? 18 : 24);
   text("ENTER YOUR INITIALS", cx, cy * 0.7);
 
+  // 2 / 3 initials toggle
+  let togW = m ? 80 : 100;
+  let togH = m ? 32 : 36;
+  let togGap = 10;
+  let togY = cy * 0.7 + (m ? 22 : 28);
+  let tog2X = cx - togW - togGap / 2;
+  let tog3X = cx + togGap / 2;
+  for (let t = 0; t < 2; t++) {
+    let len = t === 0 ? 2 : 3;
+    let tx = t === 0 ? tog2X : tog3X;
+    let active = initialsLength === len;
+    fill(active ? color(50, 160, 90) : color(30, 30, 60));
+    stroke(active ? color(100, 255, 150) : color(100));
+    strokeWeight(2);
+    rect(tx, togY, togW, togH, 6);
+    noStroke();
+    fill(255);
+    textSize(m ? 13 : 15);
+    text(len + " INITIALS", tx + togW / 2, togY + togH / 2);
+  }
+
   // Letter boxes
   let boxSize = m ? 55 : 70;
   let gap = m ? 15 : 20;
-  let totalW = boxSize * 3 + gap * 2;
+  let totalW = boxSize * initialsLength + gap * (initialsLength - 1);
   let startX = cx - totalW / 2;
   let boxY = cy * 0.85;
 
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < initialsLength; i++) {
     let bx = startX + i * (boxSize + gap);
     // Highlight current position
     if (i === initialsPos) {
@@ -374,7 +396,7 @@ function drawNameScreen() {
   } else {
     fill(150);
     textSize(16);
-    text("Type your 3 initials on the keyboard", cx, boxY + boxSize + 40);
+    text("Type your " + initialsLength + " initials on the keyboard", cx, boxY + boxSize + 40);
   }
 
   // Leaderboard button
@@ -1709,6 +1731,23 @@ function mousePressed() {
     let cx = width / 2;
     let cy = height / 2;
 
+    // 2 / 3 initials toggle hit test
+    let togW = m ? 80 : 100;
+    let togH = m ? 32 : 36;
+    let togGap = 10;
+    let togY = cy * 0.7 + (m ? 22 : 28);
+    let tog2X = cx - togW - togGap / 2;
+    let tog3X = cx + togGap / 2;
+    if (hitTest(tog2X, togY, togW, togH) || hitTest(tog3X, togY, togW, togH)) {
+      let newLen = hitTest(tog2X, togY, togW, togH) ? 2 : 3;
+      if (newLen !== initialsLength) {
+        initialsLength = newLen;
+        initialsInput = newLen === 2 ? ["_", "_"] : ["_", "_", "_"];
+        initialsPos = 0;
+      }
+      return;
+    }
+
     if (m) {
       // Mobile keyboard hit detection
       let letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -1727,11 +1766,11 @@ function mousePressed() {
         let kx = keysStartX + col * (keySize + keyGap);
         let ky = keysStartY + row * (keySize + keyGap);
         if (hitTest(kx, ky, keySize, keySize)) {
-          if (initialsPos < 3) {
+          if (initialsPos < initialsLength) {
             initialsInput[initialsPos] = letters[k];
             initialsPos++;
-            if (initialsPos >= 3) {
-              playerInitials = initialsInput.join("");
+            if (initialsPos >= initialsLength) {
+              playerInitials = initialsInput.slice(0, initialsLength).join("");
               gameState = "INTRO";
             }
           }
@@ -2199,11 +2238,11 @@ function keyPressed() {
   // Name entry (desktop keyboard)
   if (gameState === "NAME") {
     if (key.length === 1 && key.match(/[a-zA-Z]/)) {
-      if (initialsPos < 3) {
+      if (initialsPos < initialsLength) {
         initialsInput[initialsPos] = key.toUpperCase();
         initialsPos++;
-        if (initialsPos >= 3) {
-          playerInitials = initialsInput.join("");
+        if (initialsPos >= initialsLength) {
+          playerInitials = initialsInput.slice(0, initialsLength).join("");
           gameState = "INTRO";
         }
       }
@@ -2231,7 +2270,7 @@ function resetGame() {
   score = 0;
   planetsRestored = 1;
   airSupply = 100;
-  resources = { bricks: 5, airTanks: 3, minerals: 0, water: 0, spaceBucks: 0, seeds: 2 };
+  resources = { bricks: 10, airTanks: 3, minerals: 0, water: 0, spaceBucks: 0, seeds: 10 };
   messages = [];
   for (let p of planets) {
     p.hab = p.name === "Earth" ? 100 : 0;
@@ -2242,7 +2281,7 @@ function resetGame() {
   gameTimerStarted = false;
   currentPIdx = 2;
   gameState = "NAME";
-  initialsInput = ["_", "_", "_"];
+  initialsInput = initialsLength === 2 ? ["_", "_"] : ["_", "_", "_"];
   initialsPos = 0;
   playerInitials = "";
 }
