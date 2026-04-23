@@ -1995,6 +1995,24 @@ function mousePressed() {
             milestone("firstIrrigation", "Amazing! Irrigation gives huge bonuses. Connect more water to villages!");
             irrigationConnections.push({ col: gi, row: gj });
 
+            // Check if every village on this planet is now irrigated — if so, resupply
+            let totalVillages = 0, irrigatedVillages = 0;
+            for (let ci = 0; ci < GRID_COLS; ci++) {
+              for (let cj = 0; cj < GRID_ROWS; cj++) {
+                if (surfaceGrid[ci][cj].hasVillage) {
+                  totalVillages++;
+                  if (surfaceGrid[ci][cj].irrigated) irrigatedVillages++;
+                }
+              }
+            }
+            if (totalVillages > 0 && irrigatedVillages === totalVillages) {
+              resources.bricks += 10;
+              resources.seeds += 3;
+              addMessage("All villages irrigated! Fresh supply: +10 bricks, +3 seeds. Drag them onto the planet!");
+              spawnParticles(mouseX, mouseY, [255, 220, 80], 30);
+              irrigationMode = false;
+            }
+
             if (p.hab >= 100) {
               planetsRestored++;
               score += 500;
