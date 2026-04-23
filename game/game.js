@@ -111,6 +111,10 @@ let autoAdvanceTimer = 0;
 let irrigationMode = false;
 let irrigationConnections = []; // tracks completed irrigation links for visual flow
 
+// Music / soundtrack
+let musicOn = true;
+let musicStarted = false;
+
 // Mobile / responsive layout
 let mobile = false;
 let SIDEBAR_W = 260;
@@ -259,6 +263,75 @@ function draw() {
   drawMessages();
   drawParticles();
   handleDragRender();
+  drawMusicButton();
+}
+
+// ===========================
+//       MUSIC / SOUND
+// ===========================
+
+function drawMusicButton() {
+  let size = 36;
+  let x = 12;
+  let y = 12;
+  push();
+  noStroke();
+  fill(0, 0, 0, 160);
+  rect(x, y, size, size, 6);
+  stroke(musicOn ? color(100, 255, 150) : color(180));
+  strokeWeight(2);
+  fill(musicOn ? color(50, 160, 90) : color(60));
+  // Speaker body
+  let cxI = x + size / 2 - 3;
+  let cyI = y + size / 2;
+  beginShape();
+  vertex(cxI - 6, cyI - 4);
+  vertex(cxI - 2, cyI - 4);
+  vertex(cxI + 4, cyI - 8);
+  vertex(cxI + 4, cyI + 8);
+  vertex(cxI - 2, cyI + 4);
+  vertex(cxI - 6, cyI + 4);
+  endShape(CLOSE);
+  if (musicOn) {
+    // Sound waves
+    noFill();
+    stroke(100, 255, 150);
+    strokeWeight(1.5);
+    arc(cxI + 6, cyI, 6, 10, -PI / 3, PI / 3);
+    arc(cxI + 6, cyI, 12, 18, -PI / 3, PI / 3);
+  } else {
+    // X mark for muted
+    stroke(255, 80, 80);
+    strokeWeight(2);
+    line(cxI + 6, cyI - 4, cxI + 12, cyI + 4);
+    line(cxI + 12, cyI - 4, cxI + 6, cyI + 4);
+  }
+  pop();
+}
+
+function toggleMusic() {
+  musicOn = !musicOn;
+  let audio = document.getElementById("soundtrack");
+  if (!audio) return;
+  if (musicOn) {
+    audio.volume = 0.5;
+    audio.play().catch(() => {});
+    musicStarted = true;
+  } else {
+    audio.pause();
+  }
+}
+
+function ensureMusicPlaying() {
+  if (!musicOn || musicStarted) return;
+  let audio = document.getElementById("soundtrack");
+  if (!audio) return;
+  audio.volume = 0.5;
+  audio.play().then(() => { musicStarted = true; }).catch(() => {});
+}
+
+function musicButtonHit() {
+  return mouseX > 12 && mouseX < 48 && mouseY > 12 && mouseY < 48;
 }
 
 // ===========================
@@ -1730,6 +1803,14 @@ function touchMoved() {
 }
 
 function mousePressed() {
+  // Music toggle is always clickable, on every screen
+  if (musicButtonHit()) {
+    toggleMusic();
+    return;
+  }
+  // First user gesture — kick off autoplay if music is on
+  ensureMusicPlaying();
+
   if (gameState === "NAME") {
     let m = isMobile();
     let cx = width / 2;
