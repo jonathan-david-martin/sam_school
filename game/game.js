@@ -307,18 +307,17 @@ function drawNameScreen() {
   textSize(m ? 16 : 22);
   text("The Solar Restoration", cx, cy * 0.35 + (m ? 32 : 48));
 
-  // Enter initials prompt
-  fill(255);
-  textSize(m ? 18 : 24);
-  text("ENTER YOUR INITIALS", cx, cy * 0.7);
-
-  // 2 / 3 initials toggle
-  let togW = m ? 80 : 100;
-  let togH = m ? 32 : 36;
-  let togGap = 10;
-  let togY = cy * 0.7 + (m ? 22 : 28);
+  // 2 / 3 initials toggle (above the prompt so it's clearly visible)
+  let togW = m ? 100 : 130;
+  let togH = m ? 34 : 40;
+  let togGap = 12;
+  let togY = cy * 0.55;
   let tog2X = cx - togW - togGap / 2;
   let tog3X = cx + togGap / 2;
+  fill(200, 230, 255);
+  noStroke();
+  textSize(m ? 13 : 15);
+  text("HOW MANY INITIALS?", cx, togY - (m ? 14 : 18));
   for (let t = 0; t < 2; t++) {
     let len = t === 0 ? 2 : 3;
     let tx = t === 0 ? tog2X : tog3X;
@@ -329,9 +328,14 @@ function drawNameScreen() {
     rect(tx, togY, togW, togH, 6);
     noStroke();
     fill(255);
-    textSize(m ? 13 : 15);
+    textSize(m ? 14 : 16);
     text(len + " INITIALS", tx + togW / 2, togY + togH / 2);
   }
+
+  // Enter initials prompt
+  fill(255);
+  textSize(m ? 18 : 24);
+  text("ENTER YOUR INITIALS", cx, cy * 0.72);
 
   // Letter boxes
   let boxSize = m ? 55 : 70;
@@ -1732,10 +1736,10 @@ function mousePressed() {
     let cy = height / 2;
 
     // 2 / 3 initials toggle hit test
-    let togW = m ? 80 : 100;
-    let togH = m ? 32 : 36;
-    let togGap = 10;
-    let togY = cy * 0.7 + (m ? 22 : 28);
+    let togW = m ? 100 : 130;
+    let togH = m ? 34 : 40;
+    let togGap = 12;
+    let togY = cy * 0.55;
     let tog2X = cx - togW - togGap / 2;
     let tog3X = cx + togGap / 2;
     if (hitTest(tog2X, togY, togW, togH) || hitTest(tog3X, togY, togW, togH)) {
