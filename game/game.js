@@ -46,8 +46,8 @@ let initialsPos = 0;
 let leaderboardData = [];
 let leaderboardLoaded = false;
 
-// 5-minute game timer
-let gameTimer = 300; // seconds
+// 15-minute game timer
+let gameTimer = 900; // seconds
 let gameTimerStarted = false;
 let lastTimerFrame = 0;
 
@@ -1827,7 +1827,7 @@ function mousePressed() {
     if (hitTest(btnX, btnY, btnW, btnH)) {
       gameState = "SPACE";
       gameTimerStarted = true;
-      addMessage("Click any planet to begin terraforming! You have 5 minutes!", 300);
+      addMessage("Click any planet to begin terraforming! You have 15 minutes!", 300);
     }
 
     // Leaderboard button on intro screen
@@ -2281,7 +2281,7 @@ function resetGame() {
   }
   for (let k in milestones) milestones[k] = false;
   savedGrids = {};
-  gameTimer = 300;
+  gameTimer = 900;
   gameTimerStarted = false;
   currentPIdx = 2;
   gameState = "NAME";
