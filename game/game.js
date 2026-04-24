@@ -374,7 +374,7 @@ function drawNameScreen() {
   fill(255);
   textAlign(CENTER, CENTER);
   textSize(m ? 28 : 42);
-  text("ASTRA-REFORM", cx, cy * 0.35);
+  text("NEW EARTHS", cx, cy * 0.35);
 
   fill(150, 220, 255);
   textSize(m ? 16 : 22);
@@ -648,7 +648,7 @@ function drawIntroScreen() {
   fill(255);
   textAlign(CENTER, CENTER);
   textSize(m ? 28 : 48);
-  text("ASTRA-REFORM", cx, cy * 0.55);
+  text("NEW EARTHS", cx, cy * 0.55);
 
   fill(150, 220, 255);
   textSize(m ? 16 : 22);
@@ -870,7 +870,7 @@ function drawSpaceUI() {
     textAlign(CENTER, CENTER);
     textSize(16);
     fill(200);
-    text("ASTRA-REFORM: THE SOLAR RESTORATION", width / 2, 25);
+    text("NEW EARTHS: THE SOLAR RESTORATION", width / 2, 25);
   }
 
   // Planet status panel
