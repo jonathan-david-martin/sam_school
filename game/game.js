@@ -1065,8 +1065,20 @@ function drawLandingAnimation() {
   text(`Gravity: ${p.gravity} m/s²  |  Diameter: ${p.diameterKm.toLocaleString()} km (${Math.round(p.diameterKm * 0.621371).toLocaleString()} mi)`, width / 2, height / 2 + sz / 2 + 30);
 
   if (landingProgress >= 1) {
+    let firstVisit = !savedGrids[currentPIdx];
     gameState = "SURFACE";
     loadOrGenerateSurface();
+    if (firstVisit && p.name !== "Earth") {
+      // Fresh supply on every new planet to keep co-op teams equipped
+      let bonusBricks = playerCount === 2 ? 15 : 10;
+      let bonusSeeds = playerCount === 2 ? 15 : 10;
+      let bonusAir = playerCount === 2 ? 5 : 3;
+      resources.bricks += bonusBricks;
+      resources.seeds += bonusSeeds;
+      resources.airTanks += bonusAir;
+      airSupply = min(airSupply + 30, 100);
+      addMessage(`Welcome to ${p.name}! Fresh supplies dropped: +${bonusBricks} bricks, +${bonusSeeds} seeds, +${bonusAir} air tanks!`);
+    }
     addMessage(p.fact);
     let weightHere = (playerWeight * p.gravity / 9.81).toFixed(1);
     addMessage(`Your weight on ${p.name}: ${weightHere} kg (gravity: ${p.gravity} m/s²)`);
