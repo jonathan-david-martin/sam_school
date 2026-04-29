@@ -42,6 +42,12 @@ let initialsLength = 3; // 2 or 3
 let initialsInput = ["_", "_", "_"];
 let initialsPos = 0;
 let playerCount = 1; // 1 or 2 — co-op mode adds bonus starting resources
+let playerInitials1 = "";
+let playerInitials2 = "";
+let enteringPlayer = 1; // which player is currently entering initials on NAME screen
+let currentPlayer = 1; // whose turn during 2P play
+let movesPerTurn = 5; // 1, 3, or 5
+let movesThisTurn = 0;
 
 // Leaderboard
 let leaderboardData = [];
@@ -259,12 +265,38 @@ function draw() {
       }
     }
     drawGameTimer();
+    if (playerCount === 2) drawTurnHUD();
   }
 
   drawMessages();
   drawParticles();
   handleDragRender();
   drawMusicButton();
+}
+
+function drawTurnHUD() {
+  let m = isMobile();
+  let activeInitials = currentPlayer === 1 ? playerInitials1 : playerInitials2;
+  let movesLeft = movesPerTurn - movesThisTurn;
+  let label = `P${currentPlayer} (${activeInitials || "??"}) — ${movesLeft}/${movesPerTurn} moves`;
+  let bannerW = m ? min(width - 24, 260) : 280;
+  let bannerH = m ? 28 : 32;
+  let bx = width / 2 - bannerW / 2;
+  let by = m ? 44 : 50;
+
+  push();
+  // Player-specific color: P1 = green, P2 = orange
+  let col = currentPlayer === 1 ? color(50, 160, 90) : color(220, 130, 40);
+  fill(0, 0, 0, 180);
+  stroke(col);
+  strokeWeight(2);
+  rect(bx, by, bannerW, bannerH, 8);
+  noStroke();
+  fill(255);
+  textAlign(CENTER, CENTER);
+  textSize(m ? 13 : 15);
+  text(label, bx + bannerW / 2, by + bannerH / 2);
+  pop();
 }
 
 // ===========================
@@ -367,6 +399,36 @@ function drawGameTimer() {
 //       NAME ENTRY SCREEN
 // ===========================
 
+function recordMove() {
+  if (playerCount !== 2) return;
+  movesThisTurn++;
+  if (movesThisTurn >= movesPerTurn) {
+    movesThisTurn = 0;
+    currentPlayer = currentPlayer === 1 ? 2 : 1;
+    let nextInitials = currentPlayer === 1 ? playerInitials1 : playerInitials2;
+    addMessage(`PLAYER ${currentPlayer} (${nextInitials}) — your turn!`, 240);
+  }
+}
+
+function submitInitials() {
+  let entered = initialsInput.slice(0, initialsLength).join("");
+  if (playerCount === 2) {
+    if (enteringPlayer === 1) {
+      playerInitials1 = entered;
+      enteringPlayer = 2;
+      initialsInput = initialsLength === 2 ? ["_", "_"] : ["_", "_", "_"];
+      initialsPos = 0;
+    } else {
+      playerInitials2 = entered;
+      playerInitials = `${playerInitials1}/${playerInitials2}`;
+      gameState = "INTRO";
+    }
+  } else {
+    playerInitials = entered;
+    gameState = "INTRO";
+  }
+}
+
 function getNameScreenLayout() {
   let m = isMobile();
   let cx = width / 2;
@@ -374,24 +436,34 @@ function getNameScreenLayout() {
   let togW = m ? 100 : 130;
   let togH = m ? 34 : 40;
   let togGap = 12;
+  let mpTogW = m ? 64 : 80; // moves-per-turn toggles are smaller (3 buttons fit in a row)
   let titleY = cy * 0.30;
   let subtitleY = titleY + (m ? 32 : 48);
-  let initialsLabelY = subtitleY + (m ? 36 : 48);
-  let initialsTogY = initialsLabelY + (m ? 18 : 22);
-  let playersLabelY = initialsTogY + togH + (m ? 26 : 32);
-  let playersTogY = playersLabelY + (m ? 18 : 22);
-  let promptY = playersTogY + togH + (m ? 30 : 40);
-  let boxY = promptY + (m ? 30 : 40);
+  let initialsLabelY = subtitleY + (m ? 32 : 44);
+  let initialsTogY = initialsLabelY + (m ? 16 : 20);
+  let playersLabelY = initialsTogY + togH + (m ? 22 : 28);
+  let playersTogY = playersLabelY + (m ? 16 : 20);
+  // Moves-per-turn row only when 2P mode is selected
+  let showMoves = playerCount === 2;
+  let movesLabelY = playersTogY + togH + (showMoves ? (m ? 22 : 28) : 0);
+  let movesTogY = movesLabelY + (showMoves ? (m ? 16 : 20) : 0);
+  let movesBottom = showMoves ? movesTogY + togH : playersTogY + togH;
+  let promptY = movesBottom + (m ? 28 : 36);
+  let boxY = promptY + (m ? 26 : 36);
   return {
-    m, cx, cy, togW, togH, togGap,
+    m, cx, cy, togW, togH, togGap, mpTogW,
     titleY, subtitleY,
     initialsLabelY, initialsTogY,
     playersLabelY, playersTogY,
+    movesLabelY, movesTogY, showMoves,
     promptY, boxY,
     tog2X: cx - togW - togGap / 2,
     tog3X: cx + togGap / 2,
     pc1X: cx - togW - togGap / 2,
     pc2X: cx + togGap / 2,
+    mp1X: cx - (mpTogW * 1.5 + togGap),
+    mp3X: cx - mpTogW / 2,
+    mp5X: cx + (mpTogW / 2 + togGap),
   };
 }
 
@@ -446,10 +518,33 @@ function drawNameScreen() {
     text(pc === 1 ? "1 PLAYER" : "2 PLAYERS", px + togW / 2, L.playersTogY + togH / 2);
   }
 
+  // Moves-per-turn toggle (2P only)
+  if (L.showMoves) {
+    fill(200, 230, 255);
+    noStroke();
+    textSize(m ? 13 : 15);
+    text("MOVES PER TURN", cx, L.movesLabelY);
+    let opts = [{ v: 1, x: L.mp1X }, { v: 3, x: L.mp3X }, { v: 5, x: L.mp5X }];
+    for (let opt of opts) {
+      let active = movesPerTurn === opt.v;
+      fill(active ? color(50, 160, 90) : color(30, 30, 60));
+      stroke(active ? color(100, 255, 150) : color(100));
+      strokeWeight(2);
+      rect(opt.x, L.movesTogY, L.mpTogW, togH, 6);
+      noStroke();
+      fill(255);
+      textSize(m ? 14 : 16);
+      text(opt.v, opt.x + L.mpTogW / 2, L.movesTogY + togH / 2);
+    }
+  }
+
   // Enter initials prompt
   fill(255);
   textSize(m ? 18 : 24);
-  text("ENTER YOUR INITIALS", cx, L.promptY);
+  let promptText = playerCount === 2
+    ? `PLAYER ${enteringPlayer} INITIALS`
+    : "ENTER YOUR INITIALS";
+  text(promptText, cx, L.promptY);
 
   // Letter boxes
   let boxSize = m ? 55 : 70;
@@ -1882,8 +1977,25 @@ function mousePressed() {
     }
 
     // 1 / 2 player toggle hit test
-    if (hitTest(L.pc1X, L.playersTogY, togW, togH)) { playerCount = 1; return; }
-    if (hitTest(L.pc2X, L.playersTogY, togW, togH)) { playerCount = 2; return; }
+    if (hitTest(L.pc1X, L.playersTogY, togW, togH)) {
+      playerCount = 1;
+      enteringPlayer = 1;
+      playerInitials1 = "";
+      playerInitials2 = "";
+      return;
+    }
+    if (hitTest(L.pc2X, L.playersTogY, togW, togH)) {
+      playerCount = 2;
+      enteringPlayer = 1;
+      return;
+    }
+
+    // Moves-per-turn toggle hit test (2P only)
+    if (L.showMoves) {
+      if (hitTest(L.mp1X, L.movesTogY, L.mpTogW, togH)) { movesPerTurn = 1; return; }
+      if (hitTest(L.mp3X, L.movesTogY, L.mpTogW, togH)) { movesPerTurn = 3; return; }
+      if (hitTest(L.mp5X, L.movesTogY, L.mpTogW, togH)) { movesPerTurn = 5; return; }
+    }
 
     if (m) {
       // Mobile keyboard hit detection
@@ -1907,8 +2019,7 @@ function mousePressed() {
             initialsInput[initialsPos] = letters[k];
             initialsPos++;
             if (initialsPos >= initialsLength) {
-              playerInitials = initialsInput.slice(0, initialsLength).join("");
-              gameState = "INTRO";
+              submitInitials();
             }
           }
           return;
@@ -1964,13 +2075,15 @@ function mousePressed() {
         resources.bricks += 5;
         resources.seeds += 5;
         resources.airTanks += 2;
+        currentPlayer = 1;
+        movesThisTurn = 0;
       }
       gameState = "SPACE";
       gameTimerStarted = true;
       let startMsg = playerCount === 2
-        ? "CO-OP MODE! Take turns or split tasks. Click any planet to begin! 15 minutes!"
+        ? `TURN-BASED MODE! ${movesPerTurn} moves per turn. PLAYER 1 (${playerInitials1}) starts!`
         : "Click any planet to begin terraforming! You have 15 minutes!";
-      addMessage(startMsg, 300);
+      addMessage(startMsg, 360);
     }
 
     // Leaderboard button on intro screen
@@ -2237,6 +2350,7 @@ function mousePressed() {
           } else {
             addMessage("Just dirt... keep digging!");
           }
+          recordMove();
         }
       } else {
         // NORMAL MODE: Dig on grid
@@ -2269,6 +2383,7 @@ function mousePressed() {
           if (!foundSomething) {
             addMessage("Just dirt... keep digging!");
           }
+          recordMove();
         }
       }
     }
@@ -2300,6 +2415,7 @@ function mouseReleased() {
           spawnParticles(mouseX, mouseY, [60, 200, 60], 10);
           addMessage("+5 habitability! Vegetation planted!");
           milestone("firstPlant", "You grew your first plant! Each one adds +5 to habitability.");
+          recordMove();
 
           if (p.hab >= 100) {
             planetsRestored++;
@@ -2334,6 +2450,7 @@ function mouseReleased() {
         spawnParticles(mouseX, mouseY, [180, 70, 50], 4);
         addMessage(`Brick placed! (${cell.bricksDeposited}/7 toward a house)`);
         milestone("firstBrickDrop", "You placed a brick on a village! Drop 7 total to build a house.");
+        recordMove();
 
         // Every 7 bricks builds a house
         if (cell.bricksDeposited >= 7) {
@@ -2365,16 +2482,19 @@ function mouseReleased() {
         airSupply = min(airSupply + 40, 100);
         addMessage("+40 air supply!");
         spawnParticles(mouseX, mouseY, [100, 200, 255], 8);
+        recordMove();
       } else if (dragging === "minerals" && resources.minerals > 0) {
         resources.minerals--;
         resources.bricks += 2;
         addMessage("Refined minerals into 2 bricks!");
         spawnParticles(mouseX, mouseY, [180, 70, 50], 6);
+        recordMove();
       } else if (dragging === "water" && resources.water > 0) {
         resources.water--;
         airSupply = min(airSupply + 30, 100);
         addMessage("+30 air supply from water purification!");
         spawnParticles(mouseX, mouseY, [50, 120, 255], 8);
+        recordMove();
       }
     }
     dragging = null;
@@ -2389,8 +2509,7 @@ function keyPressed() {
         initialsInput[initialsPos] = key.toUpperCase();
         initialsPos++;
         if (initialsPos >= initialsLength) {
-          playerInitials = initialsInput.slice(0, initialsLength).join("");
-          gameState = "INTRO";
+          submitInitials();
         }
       }
     } else if (keyCode === BACKSPACE) {
@@ -2431,6 +2550,11 @@ function resetGame() {
   initialsInput = initialsLength === 2 ? ["_", "_"] : ["_", "_", "_"];
   initialsPos = 0;
   playerInitials = "";
+  playerInitials1 = "";
+  playerInitials2 = "";
+  enteringPlayer = 1;
+  currentPlayer = 1;
+  movesThisTurn = 0;
 }
 
 // ===========================
