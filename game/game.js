@@ -41,6 +41,7 @@ let playerInitials = "";
 let initialsLength = 3; // 2 or 3
 let initialsInput = ["_", "_", "_"];
 let initialsPos = 0;
+let playerCount = 1; // 1 or 2 — co-op mode adds bonus starting resources
 
 // Leaderboard
 let leaderboardData = [];
@@ -715,6 +716,32 @@ function drawIntroScreen() {
   let btnH = m ? 50 : 55;
   let btnX = cx - btnW / 2;
   let btnY = height - (m ? 65 : 100);
+
+  // 1 / 2 player toggle (just above start button)
+  let pcTogW = m ? 100 : 130;
+  let pcTogH = m ? 32 : 38;
+  let pcGap = 12;
+  let pcTogY = btnY - pcTogH - (m ? 26 : 32);
+  let pc1X = cx - pcTogW - pcGap / 2;
+  let pc2X = cx + pcGap / 2;
+  fill(200, 230, 255);
+  noStroke();
+  textSize(m ? 12 : 14);
+  text("PLAYERS (CO-OP)", cx, pcTogY - (m ? 10 : 12));
+  for (let t = 0; t < 2; t++) {
+    let pc = t === 0 ? 1 : 2;
+    let px = t === 0 ? pc1X : pc2X;
+    let active = playerCount === pc;
+    fill(active ? color(50, 160, 90) : color(30, 30, 60));
+    stroke(active ? color(100, 255, 150) : color(100));
+    strokeWeight(2);
+    rect(px, pcTogY, pcTogW, pcTogH, 6);
+    noStroke();
+    fill(255);
+    textSize(m ? 13 : 15);
+    text(pc + (pc === 1 ? " PLAYER" : " PLAYERS"), px + pcTogW / 2, pcTogY + pcTogH / 2);
+  }
+
   let hover = mouseX > btnX && mouseX < btnX + btnW && mouseY > btnY && mouseY < btnY + btnH;
 
   fill(hover ? color(80, 200, 120) : color(50, 160, 90));
@@ -736,11 +763,12 @@ function drawIntroScreen() {
   textSize(m ? 14 : 16);
   text("LEADERBOARD", cx, lbY + lbH / 2);
 
-  // Player name display
+  // Player name display (above the player-count toggle, with extra clearance)
   if (playerInitials) {
     fill(150);
     textSize(m ? 12 : 14);
-    text("Playing as: " + playerInitials, cx, btnY - (m ? 18 : 25));
+    let label = "Playing as: " + playerInitials + (playerCount === 2 ? "  (2P CO-OP)" : "");
+    text(label, cx, pcTogY - (m ? 30 : 36));
   }
 }
 
@@ -1901,14 +1929,34 @@ function mousePressed() {
 
   if (gameState === "INTRO") {
     let m = isMobile();
+    let cx = width / 2;
     let btnW = m ? width * 0.6 : 280;
     let btnH = m ? 50 : 55;
-    let btnX = width / 2 - btnW / 2;
+    let btnX = cx - btnW / 2;
     let btnY = height - (m ? 65 : 100);
+
+    // 1 / 2 player toggle hit test
+    let pcTogW = m ? 100 : 130;
+    let pcTogH = m ? 32 : 38;
+    let pcGap = 12;
+    let pcTogY = btnY - pcTogH - (m ? 26 : 32);
+    let pc1X = cx - pcTogW - pcGap / 2;
+    let pc2X = cx + pcGap / 2;
+    if (hitTest(pc1X, pcTogY, pcTogW, pcTogH)) { playerCount = 1; return; }
+    if (hitTest(pc2X, pcTogY, pcTogW, pcTogH)) { playerCount = 2; return; }
+
     if (hitTest(btnX, btnY, btnW, btnH)) {
+      if (playerCount === 2) {
+        resources.bricks += 5;
+        resources.seeds += 5;
+        resources.airTanks += 2;
+      }
       gameState = "SPACE";
       gameTimerStarted = true;
-      addMessage("Click any planet to begin terraforming! You have 15 minutes!", 300);
+      let startMsg = playerCount === 2
+        ? "CO-OP MODE! Take turns or split tasks. Click any planet to begin! 15 minutes!"
+        : "Click any planet to begin terraforming! You have 15 minutes!";
+      addMessage(startMsg, 300);
     }
 
     // Leaderboard button on intro screen
