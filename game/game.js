@@ -385,7 +385,7 @@ function drawNameScreen() {
   let togW = m ? 100 : 130;
   let togH = m ? 34 : 40;
   let togGap = 12;
-  let togY = cy * 0.55;
+  let togY = cy * 0.50;
   let tog2X = cx - togW - togGap / 2;
   let tog3X = cx + togGap / 2;
   fill(200, 230, 255);
@@ -406,10 +406,32 @@ function drawNameScreen() {
     text(len + " INITIALS", tx + togW / 2, togY + togH / 2);
   }
 
+  // 1 / 2 player toggle (right below initials toggle)
+  let pcTogY = cy * 0.62;
+  let pc1X = cx - togW - togGap / 2;
+  let pc2X = cx + togGap / 2;
+  fill(200, 230, 255);
+  noStroke();
+  textSize(m ? 13 : 15);
+  text("HOW MANY PLAYERS?", cx, pcTogY - (m ? 14 : 18));
+  for (let t = 0; t < 2; t++) {
+    let pc = t === 0 ? 1 : 2;
+    let px = t === 0 ? pc1X : pc2X;
+    let active = playerCount === pc;
+    fill(active ? color(50, 160, 90) : color(30, 30, 60));
+    stroke(active ? color(100, 255, 150) : color(100));
+    strokeWeight(2);
+    rect(px, pcTogY, togW, togH, 6);
+    noStroke();
+    fill(255);
+    textSize(m ? 14 : 16);
+    text(pc === 1 ? "1 PLAYER" : "2 PLAYERS", px + togW / 2, pcTogY + togH / 2);
+  }
+
   // Enter initials prompt
   fill(255);
   textSize(m ? 18 : 24);
-  text("ENTER YOUR INITIALS", cx, cy * 0.72);
+  text("ENTER YOUR INITIALS", cx, cy * 0.76);
 
   // Letter boxes
   let boxSize = m ? 55 : 70;
@@ -717,31 +739,6 @@ function drawIntroScreen() {
   let btnX = cx - btnW / 2;
   let btnY = height - (m ? 65 : 100);
 
-  // 1 / 2 player toggle (just above start button)
-  let pcTogW = m ? 100 : 130;
-  let pcTogH = m ? 32 : 38;
-  let pcGap = 12;
-  let pcTogY = btnY - pcTogH - (m ? 26 : 32);
-  let pc1X = cx - pcTogW - pcGap / 2;
-  let pc2X = cx + pcGap / 2;
-  fill(200, 230, 255);
-  noStroke();
-  textSize(m ? 12 : 14);
-  text("PLAYERS (CO-OP)", cx, pcTogY - (m ? 10 : 12));
-  for (let t = 0; t < 2; t++) {
-    let pc = t === 0 ? 1 : 2;
-    let px = t === 0 ? pc1X : pc2X;
-    let active = playerCount === pc;
-    fill(active ? color(50, 160, 90) : color(30, 30, 60));
-    stroke(active ? color(100, 255, 150) : color(100));
-    strokeWeight(2);
-    rect(px, pcTogY, pcTogW, pcTogH, 6);
-    noStroke();
-    fill(255);
-    textSize(m ? 13 : 15);
-    text(pc + (pc === 1 ? " PLAYER" : " PLAYERS"), px + pcTogW / 2, pcTogY + pcTogH / 2);
-  }
-
   let hover = mouseX > btnX && mouseX < btnX + btnW && mouseY > btnY && mouseY < btnY + btnH;
 
   fill(hover ? color(80, 200, 120) : color(50, 160, 90));
@@ -763,12 +760,12 @@ function drawIntroScreen() {
   textSize(m ? 14 : 16);
   text("LEADERBOARD", cx, lbY + lbH / 2);
 
-  // Player name display (above the player-count toggle, with extra clearance)
+  // Player name display
   if (playerInitials) {
     fill(150);
     textSize(m ? 12 : 14);
     let label = "Playing as: " + playerInitials + (playerCount === 2 ? "  (2P CO-OP)" : "");
-    text(label, cx, pcTogY - (m ? 30 : 36));
+    text(label, cx, btnY - (m ? 18 : 25));
   }
 }
 
@@ -1860,7 +1857,7 @@ function mousePressed() {
     let togW = m ? 100 : 130;
     let togH = m ? 34 : 40;
     let togGap = 12;
-    let togY = cy * 0.55;
+    let togY = cy * 0.50;
     let tog2X = cx - togW - togGap / 2;
     let tog3X = cx + togGap / 2;
     if (hitTest(tog2X, togY, togW, togH) || hitTest(tog3X, togY, togW, togH)) {
@@ -1872,6 +1869,13 @@ function mousePressed() {
       }
       return;
     }
+
+    // 1 / 2 player toggle hit test
+    let pcTogY = cy * 0.62;
+    let pc1X = cx - togW - togGap / 2;
+    let pc2X = cx + togGap / 2;
+    if (hitTest(pc1X, pcTogY, togW, togH)) { playerCount = 1; return; }
+    if (hitTest(pc2X, pcTogY, togW, togH)) { playerCount = 2; return; }
 
     if (m) {
       // Mobile keyboard hit detection
@@ -1946,16 +1950,6 @@ function mousePressed() {
     let btnH = m ? 50 : 55;
     let btnX = cx - btnW / 2;
     let btnY = height - (m ? 65 : 100);
-
-    // 1 / 2 player toggle hit test
-    let pcTogW = m ? 100 : 130;
-    let pcTogH = m ? 32 : 38;
-    let pcGap = 12;
-    let pcTogY = btnY - pcTogH - (m ? 26 : 32);
-    let pc1X = cx - pcTogW - pcGap / 2;
-    let pc2X = cx + pcGap / 2;
-    if (hitTest(pc1X, pcTogY, pcTogW, pcTogH)) { playerCount = 1; return; }
-    if (hitTest(pc2X, pcTogY, pcTogW, pcTogH)) { playerCount = 2; return; }
 
     if (hitTest(btnX, btnY, btnW, btnH)) {
       if (playerCount === 2) {
