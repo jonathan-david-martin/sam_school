@@ -367,78 +367,96 @@ function drawGameTimer() {
 //       NAME ENTRY SCREEN
 // ===========================
 
-function drawNameScreen() {
+function getNameScreenLayout() {
   let m = isMobile();
   let cx = width / 2;
   let cy = height / 2;
+  let togW = m ? 100 : 130;
+  let togH = m ? 34 : 40;
+  let togGap = 12;
+  let titleY = cy * 0.30;
+  let subtitleY = titleY + (m ? 32 : 48);
+  let initialsLabelY = subtitleY + (m ? 36 : 48);
+  let initialsTogY = initialsLabelY + (m ? 18 : 22);
+  let playersLabelY = initialsTogY + togH + (m ? 26 : 32);
+  let playersTogY = playersLabelY + (m ? 18 : 22);
+  let promptY = playersTogY + togH + (m ? 30 : 40);
+  let boxY = promptY + (m ? 30 : 40);
+  return {
+    m, cx, cy, togW, togH, togGap,
+    titleY, subtitleY,
+    initialsLabelY, initialsTogY,
+    playersLabelY, playersTogY,
+    promptY, boxY,
+    tog2X: cx - togW - togGap / 2,
+    tog3X: cx + togGap / 2,
+    pc1X: cx - togW - togGap / 2,
+    pc2X: cx + togGap / 2,
+  };
+}
+
+function drawNameScreen() {
+  let L = getNameScreenLayout();
+  let { m, cx, cy, togW, togH } = L;
 
   fill(255);
   textAlign(CENTER, CENTER);
   textSize(m ? 28 : 42);
-  text("NEW EARTHS", cx, cy * 0.35);
+  text("NEW EARTHS", cx, L.titleY);
 
   fill(150, 220, 255);
   textSize(m ? 16 : 22);
-  text("The Solar Restoration", cx, cy * 0.35 + (m ? 32 : 48));
+  text("The Solar Restoration", cx, L.subtitleY);
 
-  // 2 / 3 initials toggle (above the prompt so it's clearly visible)
-  let togW = m ? 100 : 130;
-  let togH = m ? 34 : 40;
-  let togGap = 12;
-  let togY = cy * 0.50;
-  let tog2X = cx - togW - togGap / 2;
-  let tog3X = cx + togGap / 2;
+  // 2 / 3 initials toggle
   fill(200, 230, 255);
   noStroke();
   textSize(m ? 13 : 15);
-  text("HOW MANY INITIALS?", cx, togY - (m ? 14 : 18));
+  text("HOW MANY INITIALS?", cx, L.initialsLabelY);
   for (let t = 0; t < 2; t++) {
     let len = t === 0 ? 2 : 3;
-    let tx = t === 0 ? tog2X : tog3X;
+    let tx = t === 0 ? L.tog2X : L.tog3X;
     let active = initialsLength === len;
     fill(active ? color(50, 160, 90) : color(30, 30, 60));
     stroke(active ? color(100, 255, 150) : color(100));
     strokeWeight(2);
-    rect(tx, togY, togW, togH, 6);
+    rect(tx, L.initialsTogY, togW, togH, 6);
     noStroke();
     fill(255);
     textSize(m ? 14 : 16);
-    text(len + " INITIALS", tx + togW / 2, togY + togH / 2);
+    text(len + " INITIALS", tx + togW / 2, L.initialsTogY + togH / 2);
   }
 
-  // 1 / 2 player toggle (right below initials toggle)
-  let pcTogY = cy * 0.62;
-  let pc1X = cx - togW - togGap / 2;
-  let pc2X = cx + togGap / 2;
+  // 1 / 2 player toggle
   fill(200, 230, 255);
   noStroke();
   textSize(m ? 13 : 15);
-  text("HOW MANY PLAYERS?", cx, pcTogY - (m ? 14 : 18));
+  text("HOW MANY PLAYERS?", cx, L.playersLabelY);
   for (let t = 0; t < 2; t++) {
     let pc = t === 0 ? 1 : 2;
-    let px = t === 0 ? pc1X : pc2X;
+    let px = t === 0 ? L.pc1X : L.pc2X;
     let active = playerCount === pc;
     fill(active ? color(50, 160, 90) : color(30, 30, 60));
     stroke(active ? color(100, 255, 150) : color(100));
     strokeWeight(2);
-    rect(px, pcTogY, togW, togH, 6);
+    rect(px, L.playersTogY, togW, togH, 6);
     noStroke();
     fill(255);
     textSize(m ? 14 : 16);
-    text(pc === 1 ? "1 PLAYER" : "2 PLAYERS", px + togW / 2, pcTogY + togH / 2);
+    text(pc === 1 ? "1 PLAYER" : "2 PLAYERS", px + togW / 2, L.playersTogY + togH / 2);
   }
 
   // Enter initials prompt
   fill(255);
   textSize(m ? 18 : 24);
-  text("ENTER YOUR INITIALS", cx, cy * 0.76);
+  text("ENTER YOUR INITIALS", cx, L.promptY);
 
   // Letter boxes
   let boxSize = m ? 55 : 70;
   let gap = m ? 15 : 20;
   let totalW = boxSize * initialsLength + gap * (initialsLength - 1);
   let startX = cx - totalW / 2;
-  let boxY = cy * 0.85;
+  let boxY = L.boxY;
 
   for (let i = 0; i < initialsLength; i++) {
     let bx = startX + i * (boxSize + gap);
@@ -1849,19 +1867,12 @@ function mousePressed() {
   ensureMusicPlaying();
 
   if (gameState === "NAME") {
-    let m = isMobile();
-    let cx = width / 2;
-    let cy = height / 2;
+    let L = getNameScreenLayout();
+    let { m, cx, cy, togW, togH } = L;
 
     // 2 / 3 initials toggle hit test
-    let togW = m ? 100 : 130;
-    let togH = m ? 34 : 40;
-    let togGap = 12;
-    let togY = cy * 0.50;
-    let tog2X = cx - togW - togGap / 2;
-    let tog3X = cx + togGap / 2;
-    if (hitTest(tog2X, togY, togW, togH) || hitTest(tog3X, togY, togW, togH)) {
-      let newLen = hitTest(tog2X, togY, togW, togH) ? 2 : 3;
+    if (hitTest(L.tog2X, L.initialsTogY, togW, togH) || hitTest(L.tog3X, L.initialsTogY, togW, togH)) {
+      let newLen = hitTest(L.tog2X, L.initialsTogY, togW, togH) ? 2 : 3;
       if (newLen !== initialsLength) {
         initialsLength = newLen;
         initialsInput = newLen === 2 ? ["_", "_"] : ["_", "_", "_"];
@@ -1871,11 +1882,8 @@ function mousePressed() {
     }
 
     // 1 / 2 player toggle hit test
-    let pcTogY = cy * 0.62;
-    let pc1X = cx - togW - togGap / 2;
-    let pc2X = cx + togGap / 2;
-    if (hitTest(pc1X, pcTogY, togW, togH)) { playerCount = 1; return; }
-    if (hitTest(pc2X, pcTogY, togW, togH)) { playerCount = 2; return; }
+    if (hitTest(L.pc1X, L.playersTogY, togW, togH)) { playerCount = 1; return; }
+    if (hitTest(L.pc2X, L.playersTogY, togW, togH)) { playerCount = 2; return; }
 
     if (m) {
       // Mobile keyboard hit detection
@@ -1886,7 +1894,7 @@ function mousePressed() {
       let keysW = cols * (keySize + keyGap);
       let keysStartX = cx - keysW / 2;
       let boxSize = 55;
-      let boxY = cy * 0.85;
+      let boxY = L.boxY;
       let keysStartY = boxY + boxSize + 25;
 
       for (let k = 0; k < letters.length; k++) {
