@@ -665,7 +665,7 @@ function drawIntroScreen() {
   let steps = [
     ["1.", "Tap a PLANET to land on it", [255, 200, 100]],
     ["2.", "Tap ground tiles to DIG for resources", [180, 140, 100]],
-    ["3.", "Drag BRICKS to purple villages (10 bricks = a house!)", [180, 70, 50]],
+    ["3.", "Drag BRICKS to purple villages (7 bricks = a house!)", [180, 70, 50]],
     ["4.", "Drag SEEDS onto dug dirt to grow plants", [60, 200, 60]],
     ["5.", "Build IRRIGATION pipes from water to villages", [50, 120, 255]],
     ["6.", "Reach 100% habitability to restore a planet!", [100, 255, 100]],
@@ -1191,12 +1191,12 @@ function drawSurfaceView() {
           noStroke();
           rect(barX, barY, barW, barH, 2);
           fill(255, 180, 50);
-          rect(barX, barY, barW * (cell.bricksDeposited / 10), barH, 2);
+          rect(barX, barY, barW * (cell.bricksDeposited / 7), barH, 2);
           // Tiny label
           fill(255, 200);
           textAlign(CENTER, CENTER);
           textSize(cellSize * 0.1);
-          text(`${cell.bricksDeposited}/10`, cx + cellSize / 2, barY - cellSize * 0.05);
+          text(`${cell.bricksDeposited}/7`, cx + cellSize / 2, barY - cellSize * 0.05);
         }
       }
 
@@ -1353,7 +1353,7 @@ function drawSurfaceUIDesktop(L, p) {
     "   - Find seeds (+1 seed)",
     "",
     "2. Drag onto VILLAGES (purple):",
-    "   - Bricks -> 10 = BUILD A HOUSE!",
+    "   - Bricks -> 7 = BUILD A HOUSE!",
     "   - Houses give +5 Space Bucks",
     "   - Air Tank -> +40 air supply",
     "   - Minerals -> +2 bricks",
@@ -1985,7 +1985,7 @@ function mousePressed() {
           milestone("firstAirBuy", "Smart! Spend Space Bucks to stay alive longer on tough planets.");
           spawnParticles(mouseX, mouseY, [255, 220, 50], 8);
         } else {
-          addMessage("Not enough Space Bucks! Build houses first (10 bricks = 1 house = 5 bucks).");
+          addMessage("Not enough Space Bucks! Build houses first (7 bricks = 1 house = 5 bucks).");
         }
         return;
       }
@@ -2046,7 +2046,7 @@ function mousePressed() {
           addMessage("Bought air supply! -5 Space Bucks, +25 air");
           spawnParticles(mouseX, mouseY, [255, 220, 50], 8);
         } else {
-          addMessage("Not enough Space Bucks! Build houses (10 bricks each).");
+          addMessage("Not enough Space Bucks! Build houses (7 bricks each).");
         }
         return;
       }
@@ -2270,11 +2270,11 @@ function mouseReleased() {
         cell.bricksDeposited++;
         p.hab = min(p.hab + 1, 100);
         spawnParticles(mouseX, mouseY, [180, 70, 50], 4);
-        addMessage(`Brick placed! (${cell.bricksDeposited}/10 toward a house)`);
-        milestone("firstBrickDrop", "You placed a brick on a village! Drop 10 total to build a house.");
+        addMessage(`Brick placed! (${cell.bricksDeposited}/7 toward a house)`);
+        milestone("firstBrickDrop", "You placed a brick on a village! Drop 7 total to build a house.");
 
-        // Every 10 bricks builds a house
-        if (cell.bricksDeposited >= 10) {
+        // Every 7 bricks builds a house
+        if (cell.bricksDeposited >= 7) {
           cell.bricksDeposited = 0;
           cell.houses++;
           resources.spaceBucks += 5;
